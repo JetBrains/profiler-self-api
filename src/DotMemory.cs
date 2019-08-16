@@ -10,6 +10,7 @@ using System.Reflection;
 using System.Runtime.Serialization;
 using System.Text;
 using System.Text.RegularExpressions;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace JetBrains.Profiler.SelfApi
@@ -82,10 +83,15 @@ namespace JetBrains.Profiler.SelfApi
     /// <summary>
     /// Ensures prerequisite (dotMemory console runner) for current OS and process bitness is downloaded and ready to use.
     /// </summary>
+    /// <param name="cancellationToken">The cancellation token</param>
     /// <param name="progress">The progress callback. If null progress will not be reported.</param>
     /// <param name="nugetUrl">The URL of NuGet mirror. If null the default www.nuget.org will be used.</param>
     /// <param name="prerequisitePath">The path to download prerequisite to. If null %LocalAppData% is used.</param>
-    public static Task EnsurePrerequisiteAsync(IProgress progress = null, Uri nugetUrl = null, string prerequisitePath = null)
+    public static Task EnsurePrerequisiteAsync(
+      CancellationToken cancellationToken, 
+      IProgress progress = null, 
+      Uri nugetUrl = null, 
+      string prerequisitePath = null)
     {
       lock (Mutex)
       {
@@ -98,12 +104,23 @@ namespace JetBrains.Profiler.SelfApi
         if (nugetUrl == null)
           nugetUrl = NugetOrgUrl;
         
-        return _prerequisiteTask = Prerequisite.EnsureAsync(progress, nugetUrl, prerequisitePath);
+        return _prerequisiteTask = Prerequisite.EnsureAsync(cancellationToken, progress, nugetUrl, prerequisitePath);
       }
     }
 
     /// <summary>
-    /// The shortcut for <see cref="EnsurePrerequisiteAsync"/><c>.Wait()</c>
+    /// The shortcut for <c>EnsurePrerequisiteAsync(CancellationToken.None, progress, nugetUrl, prerequisitePath)</c>
+    /// </summary>
+    public static Task EnsurePrerequisiteAsync(
+      IProgress progress = null,
+      Uri nugetUrl = null, 
+      string prerequisitePath = null)
+    {
+      return EnsurePrerequisiteAsync(CancellationToken.None, progress, nugetUrl, prerequisitePath);
+    }
+
+    /// <summary>
+    /// The shortcut for <c>EnsurePrerequisiteAsync(CancellationToken.None, progress: null, nugetUrl, prerequisitePath).Wait()</c>
     /// </summary>
     public static void EnsurePrerequisite(Uri nugetUrl = null, string prerequisitePath = null)
     {
@@ -243,7 +260,11 @@ namespace JetBrains.Profiler.SelfApi
 
     private static class Prerequisite
     {
-      public static async Task EnsureAsync(IProgress progress, Uri nugetUrl, string downloadTo)
+      public static async Task EnsureAsync(
+        CancellationToken cancellationToken, 
+        IProgress progress, 
+        Uri nugetUrl,
+        string downloadTo)
       {
         if (string.IsNullOrEmpty(downloadTo))
           downloadTo = GetAppLocalPath();
@@ -257,10 +278,14 @@ namespace JetBrains.Profiler.SelfApi
           var packageUrl = new UriBuilder(nugetUrl);
           packageUrl.Path += $"/{GetPackageName()}/{SemanticVersion}";
 
-          using (var input = await httpClient.GetStreamAsync(packageUrl.Uri).ConfigureAwait(false))
-          using (var output = File.Create(nupkgPath))
+          using (var response = await httpClient.GetAsync(packageUrl.Uri, cancellationToken).ConfigureAwait(false))
           {
-            input.CopyTo(output);
+            response.EnsureSuccessStatusCode();
+            using (var input = await response.Content.ReadAsStreamAsync().ConfigureAwait(false))
+            using (var output = File.Create(nupkgPath))
+            {
+              input.CopyTo(output);
+            } 
           }
         }
 
@@ -462,6 +487,8 @@ namespace JetBrains.Profiler.SelfApi
 
           if (milliseconds >= 0 && (DateTime.UtcNow - startTime).TotalMilliseconds > milliseconds)
             return null;
+          
+          Thread.Sleep(40);
         }
       }
       
