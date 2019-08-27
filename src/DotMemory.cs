@@ -7,7 +7,6 @@ using System.IO.Compression;
 using System.Linq;
 using System.Net.Http;
 using System.Reflection;
-using System.Runtime.Serialization;
 using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading;
@@ -16,50 +15,75 @@ using System.Threading.Tasks;
 namespace JetBrains.Profiler.SelfApi
 {
   /// <summary>
-  /// The dotMemory self profiling API. Based on single-exe console runner
-  /// which is automatically downloaded as NuGet-package. 
+  /// The dotMemory self profiling API based on single-exe console runner which is automatically downloaded as NuGet-package. 
   /// </summary>
   /// <remarks>
-  /// Target use case:
+  /// Use case: ad-hoc profiling<br/>
+  /// * install NuGet (just NuGet, no any other actions required); or simple copy this file into your project<br/>
+  /// * on initialization phase call DotMemory.EnsurePrerequisite()<br/>
+  /// * in profiled peace of code call DotMemory.GetSnapshotOnce (or Attach/GetSnapshot*/Detach)<br/>
+  /// * deploy to staging<br/>
+  /// * reproduce issue<br/>
+  /// * take over generated workspace for investigation<br/>
+  ///<br/>
+  /// Use case: self profiling as part of troubleshooting on production  
   /// * install NuGet (just NuGet, no any other actions required); or simple copy this file into your project
-  /// * insert into code DotMemory.EnsurePrerequisite()
-  /// * then call DotMemory.GetSnapshotOnce (or Attach/GetSnapshot*/Detach)
-  /// * deploy to staging
-  /// * reproduce issue
-  /// * take over generated workspace for investigation 
+  /// * in handler of awesome `Gather trouble report` action call DotMemory.EnsurePrerequisite()
+  /// * then call DotMemory.GetSnapshotOnce
+  /// * include generated workspace into report 
   /// </remarks>
+  [SuppressMessage("ReSharper", "UnusedMethodReturnValue.Local")]
+  [SuppressMessage("ReSharper", "UnusedMember.Global")]
   public static class DotMemory
   {
-    [Serializable]
-    public sealed class DotMemoryException : Exception
-    {
-      public DotMemoryException(string message) : base(message)
-      {
-      }
-      
-      public DotMemoryException(SerializationInfo info, StreamingContext context) : base(info, context)
-      {
-      }
-    }
-
+    /// <summary>
+    /// Self profiling configuration.
+    /// </summary>
     public sealed class Config
     {
       internal string PrerequisitePath;
       internal string WorkspaceFile;
+      internal string WorkspaceDir;
       internal bool IsOpenDotMemory;
+      internal bool IsOverwriteWorkspace;
 
-      public Config UsePrerequisite(string prerequisitePath)
+      /// <summary>
+      /// Specifies path to install prerequisite to.
+      /// </summary>
+      public Config UsePrerequisitePath(string prerequisitePath)
       {
         PrerequisitePath = prerequisitePath ?? throw new ArgumentNullException(nameof(prerequisitePath));
         return this;
       }
       
-      public Config SaveToFile(string filePath)
+      /// <summary>
+      /// Specifies file to save workspace to. 
+      /// </summary>
+      public Config SaveToFile(string filePath, bool overwrite = false)
       {
+        if (WorkspaceDir != null)
+          throw new InvalidOperationException("The SaveToFile and SaveToDir are mutually exclusive.");
+        
         WorkspaceFile = filePath ?? throw new ArgumentNullException(nameof(filePath));
+        IsOverwriteWorkspace = overwrite;
         return this;
       }
       
+      /// <summary>
+      /// Specifies directory to save workspace to (file name will be auto generated). 
+      /// </summary>
+      public Config SaveToDir(string dirPath)
+      {
+        if (WorkspaceDir != null)
+          throw new InvalidOperationException("The SaveToDir and SaveToFile are mutually exclusive.");
+        
+        WorkspaceDir = dirPath ?? throw new ArgumentNullException(nameof(dirPath));
+        return this;
+      }
+      
+      /// <summary>
+      /// Specifies to open produced workspace in dotMemory UI.
+      /// </summary>
       public Config OpenDotMemory()
       {
         IsOpenDotMemory = true;
@@ -67,17 +91,24 @@ namespace JetBrains.Profiler.SelfApi
       }
     }
 
+    /// <summary>
+    /// Operation progress callback. 
+    /// </summary>
     public interface IProgress
     {
-      void Notify(int percents);
+      /// <summary>
+      /// Advances progress to given number of percents.
+      /// The sum of all <paramref name="percentsDelta"/>-s is less or equal to 100.
+      /// </summary>
+      void Advance(double percentsDelta);
     }
-
 
     private const string SemanticVersion = "192.0.20190807.154300";
     private static readonly Uri NugetOrgUrl = new Uri("https://www.nuget.org/api/v2/package");
     private const int Timeout = 30000;
     private static readonly object Mutex = new object();
     private static Task _prerequisiteTask;
+    private static string _prerequisitePath;
     private static Session _session;
 
     /// <summary>
@@ -98,6 +129,8 @@ namespace JetBrains.Profiler.SelfApi
         if (_prerequisiteTask != null)
           return _prerequisiteTask;
 
+        _prerequisitePath = prerequisitePath;
+        
         if (Prerequisite.TryGetRunner(prerequisitePath, out _))
           return _prerequisiteTask = Task.CompletedTask;
         
@@ -128,7 +161,7 @@ namespace JetBrains.Profiler.SelfApi
     }
     
     /// <summary>
-    /// The shortcut for <see cref="Attach()"/>, <see cref="GetSnapshot"/>, <see cref="Detach"/>.
+    /// The shortcut for <see cref="Attach()"/>; <see cref="GetSnapshot"/>; <see cref="Detach"/>;
     /// </summary>
     /// <returns>Saved workspace file path.</returns>
     public static string GetSnapshotOnce()
@@ -137,7 +170,7 @@ namespace JetBrains.Profiler.SelfApi
     }
 
     /// <summary>
-    /// The shortcut for <see cref="Attach(Config)"/>, <see cref="GetSnapshot"/>, <see cref="Detach"/>.
+    /// The shortcut for <see cref="Attach(Config)"/>; <see cref="GetSnapshot"/>; <see cref="Detach"/>;
     /// </summary>
     /// <returns>Saved workspace file path.</returns>
     public static string GetSnapshotOnce(Config config)
@@ -147,10 +180,10 @@ namespace JetBrains.Profiler.SelfApi
       lock (Mutex)
       {
         if (_prerequisiteTask == null || !_prerequisiteTask.Wait(40))
-          throw new DotMemoryException("The prerequisite isn't ready: forgot to call EnsurePrerequisiteAsync?");
+          throw new InvalidOperationException("The prerequisite isn't ready: forgot to call EnsurePrerequisiteAsync()?");
         
         if (_session != null)
-          throw new DotMemoryException("The profiling session is active already: Attach was called early.");
+          throw new InvalidOperationException("The profiling session is active already: Attach() was called early.");
 
         return RunConsole("get-snapshot", config).AwaitFinished(-1).WorkspaceFile;
       }
@@ -174,10 +207,10 @@ namespace JetBrains.Profiler.SelfApi
       lock (Mutex)
       {
         if (_prerequisiteTask == null || !_prerequisiteTask.Wait(40))
-          throw new DotMemoryException("The prerequisite isn't ready: forgot to call EnsurePrerequisiteAsync?");
+          throw new InvalidOperationException("The prerequisite isn't ready: forgot to call EnsurePrerequisiteAsync()?");
         
         if (_session != null)
-          throw new DotMemoryException("The profiling session is active still: forgot to call Detach?");
+          throw new InvalidOperationException("The profiling session is active still: forgot to call Detach()?");
 
         _session = RunConsole("attach -s", config).AwaitConnected(Timeout);
       }
@@ -192,7 +225,7 @@ namespace JetBrains.Profiler.SelfApi
       lock (Mutex)
       {
         if (_session == null)
-          throw new DotMemoryException("The profiling session isn't active: forgot to call Attach?");
+          throw new InvalidOperationException("The profiling session isn't active: forgot to call Attach()?");
 
         try
         {
@@ -214,28 +247,37 @@ namespace JetBrains.Profiler.SelfApi
       lock (Mutex)
       {
         if (_session == null)
-          throw new DotMemoryException("The profiling session isn't active: forgot to call Attach?");
+          throw new InvalidOperationException("The profiling session isn't active: forgot to call Attach()?");
 
         _session.GetSnapshot(name);
       }
     }
 
-    private static string GetSaveToFilePath()
+    private static string GetSaveToFilePath(Config config)
     {
-      return Path.Combine(Path.GetTempPath(), $"{Process.GetCurrentProcess().ProcessName}.{DateTime.Now:yyyy-MM-ddTHH-mm-ss.fff}.dmw");
+      if (config.WorkspaceFile != null)
+        return config.WorkspaceFile;
+
+      var workspaceName = $"{Process.GetCurrentProcess().ProcessName}.{DateTime.Now:yyyy-MM-ddTHH-mm-ss.fff}.dmw";
+      if (config.WorkspaceDir != null)
+        return Path.Combine(config.WorkspaceDir, workspaceName);
+      
+      return Path.Combine(Path.GetTempPath(), workspaceName);
     }
 
     private static Session RunConsole(string command, Config config)
     {
-      if (!Prerequisite.TryGetRunner(config.PrerequisitePath, out var runnerPath))
-        throw new DotMemoryException("The dotMemory console profiler not found.");
+      if (!Prerequisite.TryGetRunner(config.PrerequisitePath ?? _prerequisitePath, out var runnerPath))
+        throw new InvalidOperationException("Something went wrong: the dotMemory console profiler not found.");
       
-      if (config.WorkspaceFile == null)
-        config.WorkspaceFile = GetSaveToFilePath();
+      var workspaceFile = GetSaveToFilePath(config);
       
       var commandLine = new StringBuilder();
-      commandLine.Append($"{command} {Process.GetCurrentProcess().Id} \"-f={config.WorkspaceFile}\"");
+      commandLine.Append($"{command} {Process.GetCurrentProcess().Id} \"-f={workspaceFile}\"");
 
+      if (config.IsOverwriteWorkspace)
+        commandLine.Append(" --overwrite");
+      
       if (config.IsOpenDotMemory)
         commandLine.Append(" --open-dotmemory");
     
@@ -253,9 +295,9 @@ namespace JetBrains.Profiler.SelfApi
       );
     
       if (console == null)
-        throw new DotMemoryException("Something went wrong: unable to start dotMemory console profiler.");
+        throw new InvalidOperationException("Something went wrong: unable to start dotMemory console profiler.");
 
-      return new Session(console, config.WorkspaceFile);
+      return new Session(console, workspaceFile);
     }
 
     private static class Prerequisite
@@ -266,26 +308,35 @@ namespace JetBrains.Profiler.SelfApi
         Uri nugetUrl,
         string downloadTo)
       {
-        if (string.IsNullOrEmpty(downloadTo))
-          downloadTo = GetAppLocalPath();
+        const double downloadWeigth = 0.8;
+        const double unzipWeigth = 0.2;
+        const long estimatedLength = 20 * 1024 * 1024;
+
+        downloadTo = string.IsNullOrEmpty(downloadTo) 
+          ? GetAppLocalPath() 
+          : Path.Combine(downloadTo, SemanticVersion);
 
         Directory.CreateDirectory(downloadTo);
 
-        var nupkgPath = Path.GetTempFileName();
+        var nupkgName = GetPackageName();
+        var nupkgPath = Path.Combine(downloadTo, $"{nupkgName}.{SemanticVersion}.nupkg");
 
         using (var httpClient = new HttpClient())
         {
           var packageUrl = new UriBuilder(nugetUrl);
-          packageUrl.Path += $"/{GetPackageName()}/{SemanticVersion}";
+          packageUrl.Path += $"/{nupkgName}/{SemanticVersion}";
 
-          using (var response = await httpClient.GetAsync(packageUrl.Uri, cancellationToken).ConfigureAwait(false))
+          using (var response = await httpClient
+            .GetAsync(packageUrl.Uri, HttpCompletionOption.ResponseHeadersRead, cancellationToken)
+            .ConfigureAwait(false))
           {
             response.EnsureSuccessStatusCode();
             using (var input = await response.Content.ReadAsStreamAsync().ConfigureAwait(false))
             using (var output = File.Create(nupkgPath))
             {
-              input.CopyTo(output);
-            } 
+              var length = response.Content.Headers.ContentLength ?? estimatedLength;
+              Copy(input, output, length, progress, downloadWeigth);
+            }
           }
         }
 
@@ -296,12 +347,12 @@ namespace JetBrains.Profiler.SelfApi
           var entry = nupkg.Entries
             .FirstOrDefault(x => string.Equals(x.Name, runnerName, StringComparison.OrdinalIgnoreCase));
           if (entry == null)
-            throw new DotMemoryException("Something went wrong: unable to find dotMemory console profiler inside NuGet package.");
+            throw new InvalidOperationException("Something went wrong: unable to find dotMemory console profiler inside NuGet package.");
 
           using (var input = entry.Open())
           using (var output = File.Create(Path.Combine(downloadTo, runnerName)))
           {
-            input.CopyTo(output);
+            Copy(input, output, entry.Length, progress, unzipWeigth);
           }
         }
         
@@ -314,7 +365,7 @@ namespace JetBrains.Profiler.SelfApi
 
         if (!string.IsNullOrEmpty(prerequisitePath))
         {
-          runnerPath = Path.Combine(prerequisitePath, runnerName);
+          runnerPath = Path.Combine(prerequisitePath, SemanticVersion, runnerName);
           return File.Exists(runnerPath);
         }
 
@@ -329,13 +380,47 @@ namespace JetBrains.Profiler.SelfApi
         return false;
       }
 
+      private static void Copy(
+        Stream @from, 
+        Stream to, 
+        long length, 
+        IProgress progress, 
+        double progressWeight)
+      {
+        var buffer = new byte[65535];
+        var percents = 0L;
+        var bytesCopied = 0L;
+        
+        while (true)
+        {
+          var bytesRead = from.Read(buffer, 0, buffer.Length);
+          if (bytesRead <= 0)
+            break;
+          
+          to.Write(buffer, 0, bytesRead);
+          bytesCopied += bytesRead;
+
+          if (progress == null) 
+            continue;
+          
+          var newPercents = bytesCopied < length ? bytesCopied * 100 / length : 100;
+          var delta = (newPercents - percents) * progressWeight;
+          if (delta < 1.0) 
+            continue;
+          
+          progress.Advance(delta);
+          percents = newPercents;
+        }
+      }
+
       private static string GetRunnerName()
       {
         if (Environment.OSVersion.Platform != PlatformID.Win32NT)
-          throw new DotMemoryException("Platforms other than Windows not yet supported.");
+          throw new NotSupportedException("Platforms other than Windows not yet supported.");
 
         return "dotMemory.exe";
 
+        // The code below is for future use: specific runner name for OS and bitness
         /*string osSuffix, ext;
 
         switch (Environment.OSVersion.Platform)
@@ -358,6 +443,7 @@ namespace JetBrains.Profiler.SelfApi
       {
         return "JetBrains.dotMemory.Console";
         
+        // The code below is for future use: specific package name for OS and bitness - for prerequisite size optimization
         /*string osSuffix;
 
         switch (Environment.OSVersion.Platform)
@@ -385,7 +471,7 @@ namespace JetBrains.Profiler.SelfApi
       {
         return Path.Combine(
           Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-          $"JetBrains/ProfilerSelfApi/{SemanticVersion}"
+          $"JetBrains/Profiler/SelfApi/{SemanticVersion}"
         );
       }
     }
@@ -449,7 +535,7 @@ namespace JetBrains.Profiler.SelfApi
       {
         var regex = new Regex(__dotMemory + @"\[\x22connected\x22,\s*\{.*\}\]", RegexOptions.Compiled | RegexOptions.IgnoreCase);
         if (TryAwaitFor(regex, milliseconds) == null)
-          throw DotMemoryConsoleException("The dotMemory console profiler was not connected. See details below.");
+          throw ConsoleException("The dotMemory console profiler was not connected. See details below.");
 
         return this;
       }
@@ -457,10 +543,10 @@ namespace JetBrains.Profiler.SelfApi
       public Session AwaitFinished(int milliseconds)
       {
         if (!_console.WaitForExit(milliseconds))
-          throw DotMemoryConsoleException("The dotMemory console profiler has not finished in given time. See details below.");
+          throw ConsoleException("The dotMemory console profiler has not finished in given time. See details below.");
 
         if (_console.ExitCode != 0)
-          throw DotMemoryConsoleException("The dotMemory console profiler has failed. See details below.");
+          throw ConsoleException("The dotMemory console profiler has failed. See details below.");
 
         return this;
       }
@@ -520,7 +606,7 @@ namespace JetBrains.Profiler.SelfApi
         _console.StandardInput.WriteLine(messageBuilder.ToString());
       }
 
-      private DotMemoryException DotMemoryConsoleException(string caption)
+      private InvalidOperationException ConsoleException(string caption)
       {
         var message = new StringBuilder();
         message.AppendLine(caption);
@@ -534,7 +620,7 @@ namespace JetBrains.Profiler.SelfApi
         lock (_outputLines)
           message.AppendLine(string.Join(Environment.NewLine, _outputLines));
         
-        throw new DotMemoryException(message.ToString());
+        throw new InvalidOperationException(message.ToString());
       }
     }
   }
