@@ -127,8 +127,13 @@ namespace JetBrains.Profiler.SelfApi
       lock (Mutex)
       {
         if (_prerequisiteTask != null)
-          return _prerequisiteTask;
+        {
+          var status = _prerequisiteTask.Status;
+          if (status != TaskStatus.Faulted && status != TaskStatus.Canceled)
+            return _prerequisiteTask;
+        }
 
+        _prerequisiteTask = null;
         _prerequisitePath = prerequisitePath;
         
         if (Prerequisite.TryGetRunner(prerequisitePath, out _))
