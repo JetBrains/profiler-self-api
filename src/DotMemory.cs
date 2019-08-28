@@ -137,7 +137,7 @@ namespace JetBrains.Profiler.SelfApi
         _prerequisitePath = prerequisitePath;
         
         if (Prerequisite.TryGetRunner(prerequisitePath, out _))
-          return _prerequisiteTask = Task.CompletedTask;
+          return _prerequisiteTask = Task.FromResult(Missing.Value);
         
         if (nugetUrl == null)
           nugetUrl = NugetOrgUrl;
