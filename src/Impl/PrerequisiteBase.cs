@@ -20,7 +20,7 @@ namespace JetBrains.Profiler.SelfApi.Impl
             SemanticVersion = semanticVersion;
         }
 
-        public async Task EnsureAsync(
+        public async Task DownloadAsync(
             Uri nugetUrl,
             NuGetApi nugetApi,
             string downloadTo,
@@ -34,17 +34,20 @@ namespace JetBrains.Profiler.SelfApi.Impl
                 ? GetAppLocalPath()
                 : Path.Combine(downloadTo, $"{Name}.{SemanticVersion}");
 
+            Trace.Info("Prerequisite.Download: targetPath = `{0}`", downloadTo);
             Directory.CreateDirectory(downloadTo);
 
             var nupkgName = GetPackageName();
             var nupkgPath = Path.Combine(downloadTo, $"{nupkgName}.{SemanticVersion}.nupkg");
-
+            
             using (var http = new HttpClient())
             {
+                Trace.Verbose("Prerequisite.Download: Requesting...");
                 var content = await http
                     .GetNupkgContentAsync(nugetUrl, nugetApi, nupkgName, SemanticVersion, cancellationToken)
                     .ConfigureAwait(false);
                 
+                Trace.Verbose("Prerequisite.Download: Saving...");
                 using (var input = await content.ReadAsStreamAsync().ConfigureAwait(false))
                 using (var output = File.Create(nupkgPath))
                 {
@@ -59,6 +62,7 @@ namespace JetBrains.Profiler.SelfApi.Impl
 
             const string toolsPrefix = "tools/";
             
+            Trace.Verbose("Prerequisite.Download: Reading .nupkg ...");
             using (var zipInput = File.OpenRead(nupkgPath))
             using (var nupkg = new ZipArchive(zipInput))
             {
@@ -71,13 +75,20 @@ namespace JetBrains.Profiler.SelfApi.Impl
                         "Something went wrong: unable to find /tools folder inside NuGet package.");
 
                 var totalLength = toolsEntries.Sum(x => x.Length);
+                Trace.Verbose(
+                    "Prerequisite.Download: Found {0} entries of total length {1} bytes.", 
+                    toolsEntries.Length, 
+                    totalLength
+                );
 
+                Trace.Verbose("Prerequisite.Download: Unpacking...");
                 foreach (var entry in toolsEntries)
                 {
+                    var dstPath = Path.Combine(downloadTo, entry.FullName.Substring(toolsPrefix.Length));
                     using (var input = entry.Open())
-                    using (var output = File.Create(
-                        Path.Combine(downloadTo, entry.FullName.Substring(toolsPrefix.Length))))
+                    using (var output = File.Create(dstPath))
                     {
+                        Trace.Verbose("Prerequisite.Download:   `{0}` -> `{1}`", entry.FullName, dstPath);
                         Copy(
                             input,
                             output, 
@@ -88,27 +99,33 @@ namespace JetBrains.Profiler.SelfApi.Impl
                 }
             }
 
+            Trace.Verbose("Prerequisite.Download: Cleaning up...");
             File.Delete(nupkgPath);
         }
 
         public bool TryGetRunner(string prerequisitePath, out string runnerPath)
         {
             var runnerName = GetRunnerName();
+            Trace.Verbose("Prerequisite.TryGetRunner: `{0}`", runnerName);
 
             if (!string.IsNullOrEmpty(prerequisitePath))
             {
                 runnerPath = Path.Combine(prerequisitePath, $"{Name}.{SemanticVersion}", runnerName);
+                Trace.Verbose("Prerequisite.TryGetRunner: External path provided, looking at `{0}`", runnerPath);
                 return File.Exists(runnerPath);
             }
 
             runnerPath = Path.Combine(GetNearbyPath(), runnerName);
+            Trace.Verbose("Prerequisite.TryGetRunner: Looking at `{0}`", runnerPath);
             if (File.Exists(runnerPath))
                 return true;
 
             runnerPath = Path.Combine(GetAppLocalPath(), runnerName);
+            Trace.Verbose("Prerequisite.TryGetRunner: Looking at `{0}`", runnerPath);
             if (File.Exists(runnerPath))
                 return true;
 
+            Trace.Verbose("Prerequisite.TryGetRunner: No runner found.");
             return false;
         }
         

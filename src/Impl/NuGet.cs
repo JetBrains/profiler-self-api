@@ -76,7 +76,8 @@ namespace JetBrains.Profiler.SelfApi.Impl
                 CancellationToken cancellationToken)
             {
                 var packageUrl = nugetUrl.Combine($"{packageId}/{packageVersion}");
-
+                
+                Trace.Info("NuGet.V2.GetNupkgContent: {0}", packageUrl);
                 var response = await http
                     .GetAsync(packageUrl, HttpCompletionOption.ResponseHeadersRead, cancellationToken)
                     .ConfigureAwait(false);
@@ -106,7 +107,8 @@ namespace JetBrains.Profiler.SelfApi.Impl
 
                 var packageUrl = packageBaseUrl
                     .Combine($"{packageId}/{packageVersion}/{packageId}.{packageVersion}.nupkg");
-
+                
+                Trace.Info("NuGet.V3.GetNupkgContent: {0}", packageUrl);
                 var response = await http
                     .GetAsync(packageUrl, HttpCompletionOption.ResponseHeadersRead, cancellationToken)
                     .ConfigureAwait(false);
@@ -121,6 +123,7 @@ namespace JetBrains.Profiler.SelfApi.Impl
                 Uri indexUrl,
                 CancellationToken cancellationToken)
             {
+                Trace.Info("NuGet.V3.GetIndex: {0}", indexUrl);
                 using (var response = await http
                     .GetAsync(indexUrl, HttpCompletionOption.ResponseHeadersRead, cancellationToken)
                     .ConfigureAwait(false))

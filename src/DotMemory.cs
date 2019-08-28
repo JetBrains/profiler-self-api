@@ -117,20 +117,29 @@ namespace JetBrains.Profiler.SelfApi
         {
           var status = _prerequisiteTask.Status;
           if (status != TaskStatus.Faulted && status != TaskStatus.Canceled)
+          {
+            Trace.Verbose("DotMemory.EnsurePrerequisite: Task already running.");
             return _prerequisiteTask;
+          }
+          
+          Trace.Verbose("DotMemory.EnsurePrerequisite: Previous task has failed or cancelled, will re-try.");
         }
 
         _prerequisiteTask = null;
         _prerequisitePath = prerequisitePath;
-        
+
         if (OurPrerequisite.TryGetRunner(prerequisitePath, out _))
+        {
+          Trace.Verbose("DotMemory.EnsurePrerequisite: Runner found, no async task needed.");
           return _prerequisiteTask = Task.FromResult(Missing.Value);
+        }
         
         if (nugetUrl == null)
           nugetUrl = NuGet.GetDefaultUrl(nugetApi);
         
+        Trace.Verbose("DotMemory.EnsurePrerequisite: Runner not found, starting download...");
         return _prerequisiteTask = OurPrerequisite
-          .EnsureAsync(nugetUrl, nugetApi, prerequisitePath, progress, cancellationToken);
+          .DownloadAsync(nugetUrl, nugetApi, prerequisitePath, progress, cancellationToken);
       }
     }
 
@@ -264,6 +273,7 @@ namespace JetBrains.Profiler.SelfApi
 
     private static Session RunConsole(string command, Config config)
     {
+      Trace.Verbose("DotMemory.RunConsole: Looking for runner...");
       if (!OurPrerequisite.TryGetRunner(config.PrerequisitePath ?? _prerequisitePath, out var runnerPath))
         throw new InvalidOperationException("Something went wrong: the dotMemory console profiler not found.");
       
@@ -277,6 +287,8 @@ namespace JetBrains.Profiler.SelfApi
       
       if (config.IsOpenDotMemory)
         commandLine.Append(" --open-dotmemory");
+      
+      Trace.Info("DotMemory.RunConsole:\n  runner = `{0}`\n  arguments = `{1}`", runnerPath, commandLine);
     
       var console = Process.Start(
         new ProcessStartInfo
@@ -293,6 +305,8 @@ namespace JetBrains.Profiler.SelfApi
     
       if (console == null)
         throw new InvalidOperationException("Something went wrong: unable to start dotMemory console profiler.");
+      
+      Trace.Verbose("DotMemory.RunConsole: Runner started.");
 
       return new Session(console, workspaceFile);
     }
@@ -376,7 +390,10 @@ namespace JetBrains.Profiler.SelfApi
               if (args.Data != null)
               {
                 lock (_outputLines)
+                {
                   _outputLines.Add(args.Data);
+                  Trace.Verbose(args.Data);
+                }
               }
             };
 
@@ -386,7 +403,10 @@ namespace JetBrains.Profiler.SelfApi
               if (args.Data != null)
               {
                 lock (_errorLines)
+                {
                   _errorLines.Add(args.Data);
+                  Trace.Verbose(args.Data);
+                }
               }
             };
 
@@ -484,7 +504,9 @@ namespace JetBrains.Profiler.SelfApi
         
         messageBuilder.Append("]");
 
-        _console.StandardInput.WriteLine(messageBuilder.ToString());
+        var message = messageBuilder.ToString();
+        Trace.Verbose(message);
+        _console.StandardInput.WriteLine(message);
       }
 
       private InvalidOperationException ConsoleException(string caption)
