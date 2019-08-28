@@ -3,14 +3,12 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.IO;
-using System.IO.Compression;
-using System.Linq;
-using System.Net.Http;
 using System.Reflection;
 using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
+using JetBrains.Profiler.SelfApi.Impl;
 
 namespace JetBrains.Profiler.SelfApi
 {
@@ -19,7 +17,7 @@ namespace JetBrains.Profiler.SelfApi
   /// </summary>
   /// <remarks>
   /// Use case: ad-hoc profiling<br/>
-  /// * install NuGet (just NuGet, no any other actions required); or simple copy this file into your project<br/>
+  /// * install NuGet (just NuGet, no any other actions required)<br/>
   /// * on initialization phase call DotMemory.EnsurePrerequisite()<br/>
   /// * in profiled peace of code call DotMemory.GetSnapshotOnce (or Attach/GetSnapshot*/Detach)<br/>
   /// * deploy to staging<br/>
@@ -90,23 +88,10 @@ namespace JetBrains.Profiler.SelfApi
         return this;
       }
     }
-
-    /// <summary>
-    /// Operation progress callback. 
-    /// </summary>
-    public interface IProgress
-    {
-      /// <summary>
-      /// Advances progress to given number of percents.
-      /// The sum of all <paramref name="percentsDelta"/>-s is less or equal to 100.
-      /// </summary>
-      void Advance(double percentsDelta);
-    }
-
-    private const string SemanticVersion = "192.0.20190807.154300";
-    private static readonly Uri NugetOrgUrl = new Uri("https://www.nuget.org/api/v2/package");
+    
     private const int Timeout = 30000;
-    private static readonly object Mutex = new object();
+    private static readonly Prerequisite OurPrerequisite = new Prerequisite();
+    private static readonly object OurMutex = new object();
     private static Task _prerequisiteTask;
     private static string _prerequisitePath;
     private static Session _session;
@@ -117,14 +102,16 @@ namespace JetBrains.Profiler.SelfApi
     /// <param name="cancellationToken">The cancellation token</param>
     /// <param name="progress">The progress callback. If null progress will not be reported.</param>
     /// <param name="nugetUrl">The URL of NuGet mirror. If null the default www.nuget.org will be used.</param>
+    /// <param name="nugetApi">The NuGet API version.</param>
     /// <param name="prerequisitePath">The path to download prerequisite to. If null %LocalAppData% is used.</param>
     public static Task EnsurePrerequisiteAsync(
       CancellationToken cancellationToken, 
       IProgress progress = null, 
       Uri nugetUrl = null, 
+      NuGetApi nugetApi = NuGetApi.V3,
       string prerequisitePath = null)
     {
-      lock (Mutex)
+      lock (OurMutex)
       {
         if (_prerequisiteTask != null)
         {
@@ -136,13 +123,14 @@ namespace JetBrains.Profiler.SelfApi
         _prerequisiteTask = null;
         _prerequisitePath = prerequisitePath;
         
-        if (Prerequisite.TryGetRunner(prerequisitePath, out _))
+        if (OurPrerequisite.TryGetRunner(prerequisitePath, out _))
           return _prerequisiteTask = Task.FromResult(Missing.Value);
         
         if (nugetUrl == null)
-          nugetUrl = NugetOrgUrl;
+          nugetUrl = NuGet.GetDefaultUrl(nugetApi);
         
-        return _prerequisiteTask = Prerequisite.EnsureAsync(cancellationToken, progress, nugetUrl, prerequisitePath);
+        return _prerequisiteTask = OurPrerequisite
+          .EnsureAsync(nugetUrl, nugetApi, prerequisitePath, progress, cancellationToken);
       }
     }
 
@@ -152,17 +140,21 @@ namespace JetBrains.Profiler.SelfApi
     public static Task EnsurePrerequisiteAsync(
       IProgress progress = null,
       Uri nugetUrl = null, 
+      NuGetApi nugetApi = NuGetApi.V3,
       string prerequisitePath = null)
     {
-      return EnsurePrerequisiteAsync(CancellationToken.None, progress, nugetUrl, prerequisitePath);
+      return EnsurePrerequisiteAsync(CancellationToken.None, progress, nugetUrl, nugetApi, prerequisitePath);
     }
 
     /// <summary>
     /// The shortcut for <c>EnsurePrerequisiteAsync(CancellationToken.None, progress: null, nugetUrl, prerequisitePath).Wait()</c>
     /// </summary>
-    public static void EnsurePrerequisite(Uri nugetUrl = null, string prerequisitePath = null)
+    public static void EnsurePrerequisite(
+      Uri nugetUrl = null, 
+      NuGetApi nugetApi = NuGetApi.V3,
+      string prerequisitePath = null)
     {
-      EnsurePrerequisiteAsync(null, nugetUrl, prerequisitePath).Wait();
+      EnsurePrerequisiteAsync(null, nugetUrl, nugetApi, prerequisitePath).Wait();
     }
     
     /// <summary>
@@ -182,7 +174,7 @@ namespace JetBrains.Profiler.SelfApi
     {
       if (config == null) throw new ArgumentNullException(nameof(config));
 
-      lock (Mutex)
+      lock (OurMutex)
       {
         if (_prerequisiteTask == null || !_prerequisiteTask.Wait(40))
           throw new InvalidOperationException("The prerequisite isn't ready: forgot to call EnsurePrerequisiteAsync()?");
@@ -209,7 +201,7 @@ namespace JetBrains.Profiler.SelfApi
     {
       if (config == null) throw new ArgumentNullException(nameof(config));
 
-      lock (Mutex)
+      lock (OurMutex)
       {
         if (_prerequisiteTask == null || !_prerequisiteTask.Wait(40))
           throw new InvalidOperationException("The prerequisite isn't ready: forgot to call EnsurePrerequisiteAsync()?");
@@ -227,7 +219,7 @@ namespace JetBrains.Profiler.SelfApi
     /// <returns>Saved workspace file path.</returns>
     public static string Detach()
     {
-      lock (Mutex)
+      lock (OurMutex)
       {
         if (_session == null)
           throw new InvalidOperationException("The profiling session isn't active: forgot to call Attach()?");
@@ -249,7 +241,7 @@ namespace JetBrains.Profiler.SelfApi
     /// <param name="name">Optional snapshot name.</param>
     public static void GetSnapshot(string name = null)
     {
-      lock (Mutex)
+      lock (OurMutex)
       {
         if (_session == null)
           throw new InvalidOperationException("The profiling session isn't active: forgot to call Attach()?");
@@ -272,7 +264,7 @@ namespace JetBrains.Profiler.SelfApi
 
     private static Session RunConsole(string command, Config config)
     {
-      if (!Prerequisite.TryGetRunner(config.PrerequisitePath ?? _prerequisitePath, out var runnerPath))
+      if (!OurPrerequisite.TryGetRunner(config.PrerequisitePath ?? _prerequisitePath, out var runnerPath))
         throw new InvalidOperationException("Something went wrong: the dotMemory console profiler not found.");
       
       var workspaceFile = GetSaveToFilePath(config);
@@ -305,120 +297,13 @@ namespace JetBrains.Profiler.SelfApi
       return new Session(console, workspaceFile);
     }
 
-    private static class Prerequisite
+    private sealed class Prerequisite : PrerequisiteBase
     {
-      public static async Task EnsureAsync(
-        CancellationToken cancellationToken, 
-        IProgress progress, 
-        Uri nugetUrl,
-        string downloadTo)
+      public Prerequisite() : base("dotMemory", "192.0.20190807.154300")
       {
-        const double downloadWeigth = 0.8;
-        const double unzipWeigth = 0.2;
-        const long estimatedLength = 20 * 1024 * 1024;
-
-        downloadTo = string.IsNullOrEmpty(downloadTo) 
-          ? GetAppLocalPath() 
-          : Path.Combine(downloadTo, SemanticVersion);
-
-        Directory.CreateDirectory(downloadTo);
-
-        var nupkgName = GetPackageName();
-        var nupkgPath = Path.Combine(downloadTo, $"{nupkgName}.{SemanticVersion}.nupkg");
-
-        using (var httpClient = new HttpClient())
-        {
-          var packageUrl = new UriBuilder(nugetUrl);
-          packageUrl.Path += $"/{nupkgName}/{SemanticVersion}";
-
-          using (var response = await httpClient
-            .GetAsync(packageUrl.Uri, HttpCompletionOption.ResponseHeadersRead, cancellationToken)
-            .ConfigureAwait(false))
-          {
-            response.EnsureSuccessStatusCode();
-            using (var input = await response.Content.ReadAsStreamAsync().ConfigureAwait(false))
-            using (var output = File.Create(nupkgPath))
-            {
-              var length = response.Content.Headers.ContentLength ?? estimatedLength;
-              Copy(input, output, length, progress, downloadWeigth);
-            }
-          }
-        }
-
-        using (var zipInput = File.OpenRead(nupkgPath))
-        using (var nupkg = new ZipArchive(zipInput))
-        {
-          var runnerName = GetRunnerName();
-          var entry = nupkg.Entries
-            .FirstOrDefault(x => string.Equals(x.Name, runnerName, StringComparison.OrdinalIgnoreCase));
-          if (entry == null)
-            throw new InvalidOperationException("Something went wrong: unable to find dotMemory console profiler inside NuGet package.");
-
-          using (var input = entry.Open())
-          using (var output = File.Create(Path.Combine(downloadTo, runnerName)))
-          {
-            Copy(input, output, entry.Length, progress, unzipWeigth);
-          }
-        }
-        
-        File.Delete(nupkgPath);
       }
-
-      public static bool TryGetRunner(string prerequisitePath, out string runnerPath)
-      {
-        var runnerName = GetRunnerName();
-
-        if (!string.IsNullOrEmpty(prerequisitePath))
-        {
-          runnerPath = Path.Combine(prerequisitePath, SemanticVersion, runnerName);
-          return File.Exists(runnerPath);
-        }
-
-        runnerPath = Path.Combine(GetNearbyPath(), runnerName);
-        if (File.Exists(runnerPath))
-          return true;
-
-        runnerPath = Path.Combine(GetAppLocalPath(), runnerName);
-        if (File.Exists(runnerPath))
-          return true;
-
-        return false;
-      }
-
-      private static void Copy(
-        Stream @from, 
-        Stream to, 
-        long length, 
-        IProgress progress, 
-        double progressWeight)
-      {
-        var buffer = new byte[65535];
-        var percents = 0L;
-        var bytesCopied = 0L;
-        
-        while (true)
-        {
-          var bytesRead = from.Read(buffer, 0, buffer.Length);
-          if (bytesRead <= 0)
-            break;
-          
-          to.Write(buffer, 0, bytesRead);
-          bytesCopied += bytesRead;
-
-          if (progress == null) 
-            continue;
-          
-          var newPercents = bytesCopied < length ? bytesCopied * 100 / length : 100;
-          var delta = (newPercents - percents) * progressWeight;
-          if (delta < 1.0) 
-            continue;
-          
-          progress.Advance(delta);
-          percents = newPercents;
-        }
-      }
-
-      private static string GetRunnerName()
+      
+      protected override string GetRunnerName()
       {
         if (Environment.OSVersion.Platform != PlatformID.Win32NT)
           throw new NotSupportedException("Platforms other than Windows not yet supported.");
@@ -444,7 +329,7 @@ namespace JetBrains.Profiler.SelfApi
         return $"dotMemory.{osSuffix}.{bitnessSuffix}.{ext}";*/
       }
 
-      private static string GetPackageName()
+      protected override string GetPackageName()
       {
         return "JetBrains.dotMemory.Console";
         
@@ -466,18 +351,9 @@ namespace JetBrains.Profiler.SelfApi
         return $"JetBrains.dotMemory.{osSuffix}.{bitnessSuffix}";*/
       }
 
-      private static string GetNearbyPath()
+      protected override long GetEstimatedSize()
       {
-        var assembly = Assembly.GetExecutingAssembly();
-        return string.IsNullOrEmpty(assembly.Location) ? string.Empty : Path.GetDirectoryName(assembly.Location);
-      }
-
-      private static string GetAppLocalPath()
-      {
-        return Path.Combine(
-          Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-          $"JetBrains/Profiler/SelfApi/{SemanticVersion}"
-        );
+        return 20 * 1024 * 1024;
       }
     }
 
