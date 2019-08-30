@@ -161,7 +161,6 @@ namespace JetBrains.Profiler.SelfApi.Impl
             IProgress<double> progress)
         {
             var buffer = new byte[65535];
-            var percents = 0L;
             var bytesCopied = 0L;
 
             while (true)
@@ -176,13 +175,8 @@ namespace JetBrains.Profiler.SelfApi.Impl
                 if (progress == null)
                     continue;
 
-                var newPercents = bytesCopied < length ? bytesCopied * 100 / length : 100;
-                var delta = newPercents - percents;
-                if (delta < 1.0)
-                    continue;
-
-                progress.Report(delta);
-                percents = newPercents;
+                var percents = bytesCopied < length ? bytesCopied * 100 / length : 100;
+                progress.Report(percents);
             }
         }
     }

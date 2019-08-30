@@ -14,7 +14,7 @@
     <PackageLicenseExpression>Apache-2.0</PackageLicenseExpression>
     <PackageIconUrl>https://resources.jetbrains.com/storage/products/resharper/img/meta/ReSharper_64.png</PackageIconUrl>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
-    <TargetFrameworks>net45;netcoreapp3.0</TargetFrameworks>
+    <TargetFrameworks>net46;netcoreapp3.0</TargetFrameworks>
     <PackageVersion>0.3.8-preview1</PackageVersion>
   </PropertyGroup>
   <ItemGroup>
@@ -23,7 +23,7 @@
     <None Remove="_ReSharper.Caches\**" />
   </ItemGroup>
   <ItemGroup>
-    <PackageReference Include="System.IO.Compression" Version="4.3.0" />
-    <PackageReference Include="System.Net.Http" Version="4.3.4" />
+    <Reference Include="System.IO.Compression" Condition="'$(TargetFramework)' == 'net46'" />
+    <Reference Include="System.Net.Http" Condition="'$(TargetFramework)' == 'net46'" />
   </ItemGroup>
 </Project>
