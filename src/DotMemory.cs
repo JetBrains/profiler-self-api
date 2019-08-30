@@ -99,30 +99,27 @@ namespace JetBrains.Profiler.SelfApi
     /// <summary>
     /// Ensures prerequisite (dotMemory console runner) for current OS and process bitness is downloaded and ready to use.
     /// </summary>
+    /// <remarks>
+    /// Be aware:  
+    /// </remarks>
     /// <param name="cancellationToken">The cancellation token</param>
-    /// <param name="progress">The progress callback. If null progress will not be reported.</param>
+    /// <param name="progress">The progress callback. The progress is reported in range [0.0; 100.0]. If null progress will not be reported.</param>
     /// <param name="nugetUrl">The URL of NuGet mirror. If null the default www.nuget.org will be used.</param>
     /// <param name="nugetApi">The NuGet API version.</param>
     /// <param name="prerequisitePath">The path to download prerequisite to. If null %LocalAppData% is used.</param>
     public static Task EnsurePrerequisiteAsync(
       CancellationToken cancellationToken, 
-      IProgress progress = null, 
+      IProgress<double> progress = null, 
       Uri nugetUrl = null, 
       NuGetApi nugetApi = NuGetApi.V3,
       string prerequisitePath = null)
     {
       lock (OurMutex)
       {
-        if (_prerequisiteTask != null)
+        if (_prerequisiteTask != null && !_prerequisiteTask.IsCompleted)
         {
-          var status = _prerequisiteTask.Status;
-          if (status != TaskStatus.Faulted && status != TaskStatus.Canceled)
-          {
-            Trace.Verbose("DotMemory.EnsurePrerequisite: Task already running.");
-            return _prerequisiteTask;
-          }
-          
-          Trace.Verbose("DotMemory.EnsurePrerequisite: Previous task has failed or cancelled, will re-try.");
+          Trace.Verbose("DotMemory.EnsurePrerequisite: Task already running.");
+          return _prerequisiteTask;
         }
 
         _prerequisiteTask = null;
@@ -147,7 +144,7 @@ namespace JetBrains.Profiler.SelfApi
     /// The shortcut for <c>EnsurePrerequisiteAsync(CancellationToken.None, progress, nugetUrl, prerequisitePath)</c>
     /// </summary>
     public static Task EnsurePrerequisiteAsync(
-      IProgress progress = null,
+      IProgress<double> progress = null,
       Uri nugetUrl = null, 
       NuGetApi nugetApi = NuGetApi.V3,
       string prerequisitePath = null)
@@ -191,7 +188,7 @@ namespace JetBrains.Profiler.SelfApi
         if (_session != null)
           throw new InvalidOperationException("The profiling session is active already: Attach() was called early.");
 
-        return RunConsole("get-snapshot", config).AwaitFinished(-1).WorkspaceFile;
+        return RunConsole("get-snapshot --raw", config).AwaitFinished(-1).WorkspaceFile;
       }
     }
 

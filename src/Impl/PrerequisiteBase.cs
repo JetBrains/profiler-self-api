@@ -24,7 +24,7 @@ namespace JetBrains.Profiler.SelfApi.Impl
             Uri nugetUrl,
             NuGetApi nugetApi,
             string downloadTo,
-            IProgress progress,
+            IProgress<double> progress,
             CancellationToken cancellationToken)
         {
             const double downloadWeigth = 0.8;
@@ -55,7 +55,7 @@ namespace JetBrains.Profiler.SelfApi.Impl
                         input, 
                         output, 
                         content.Headers.ContentLength ?? GetEstimatedSize(), 
-                        new SubProgress(progress, downloadWeigth)
+                        new SubProgress(progress, 0, downloadWeigth)
                     );
                 }
             }
@@ -82,9 +82,12 @@ namespace JetBrains.Profiler.SelfApi.Impl
                 );
 
                 Trace.Verbose("Prerequisite.Download: Unpacking...");
+                var subStart = downloadWeigth * 100;
                 foreach (var entry in toolsEntries)
                 {
+                    var subStep = entry.Length * unzipWeigth / totalLength;
                     var dstPath = Path.Combine(downloadTo, entry.FullName.Substring(toolsPrefix.Length));
+                    
                     using (var input = entry.Open())
                     using (var output = File.Create(dstPath))
                     {
@@ -93,9 +96,11 @@ namespace JetBrains.Profiler.SelfApi.Impl
                             input,
                             output, 
                             entry.Length, 
-                            new SubProgress(progress, totalLength * unzipWeigth / entry.Length)
+                            new SubProgress(progress, subStart, subStep)
                         );
                     }
+
+                    subStart += subStep;
                 }
             }
 
@@ -153,7 +158,7 @@ namespace JetBrains.Profiler.SelfApi.Impl
             Stream @from,
             Stream to,
             long length,
-            IProgress progress)
+            IProgress<double> progress)
         {
             var buffer = new byte[65535];
             var percents = 0L;
@@ -176,7 +181,7 @@ namespace JetBrains.Profiler.SelfApi.Impl
                 if (delta < 1.0)
                     continue;
 
-                progress.Advance(delta);
+                progress.Report(delta);
                 percents = newPercents;
             }
         }
