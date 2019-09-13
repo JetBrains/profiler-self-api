@@ -44,6 +44,7 @@ namespace JetBrains.Profiler.SelfApi
       internal string WorkspaceDir;
       internal bool IsOpenDotMemory;
       internal bool IsOverwriteWorkspace;
+      internal bool? IsUseApi;
 
       /// <summary>
       /// Specifies path to install prerequisite to.
@@ -85,6 +86,38 @@ namespace JetBrains.Profiler.SelfApi
       public Config OpenDotMemory()
       {
         IsOpenDotMemory = true;
+        return this;
+      }
+      
+      /// <summary>
+      /// Specifies to use `JetBrains.Profiler.Api` to control snapshots.
+      /// </summary>
+      /// <remarks>
+      /// By default, the `JetBrains.Profiler.Api` is used automatically if appropriate assembly successfully loaded.
+      /// Otherwise console runner's service messages are used.
+      /// </remarks>
+      public Config UseApi()
+      {
+        if (IsUseApi.HasValue)
+          throw new InvalidOperationException("The UseApi and DoNotUseApi are mutually exclusive.");
+        
+        IsUseApi = true;
+        return this;
+      }
+      
+      /// <summary>
+      /// Specifies to DO NOT use `JetBrains.Profiler.Api` to control snapshots.
+      /// </summary>
+      /// <remarks>
+      /// By default, the `JetBrains.Profiler.Api` is used automatically if appropriate assembly successfully loaded.
+      /// Otherwise console runner's service messages are used.
+      /// </remarks>
+      public Config DoNotUseApi()
+      {
+        if (IsUseApi.HasValue)
+          throw new InvalidOperationException("The DoNotUseApi and UseApi are mutually exclusive.");
+        
+        IsUseApi = false;
         return this;
       }
     }
@@ -188,6 +221,9 @@ namespace JetBrains.Profiler.SelfApi
         if (_session != null)
           throw new InvalidOperationException("The profiling session is active already: Attach() was called early.");
 
+        // `get-snapshot` command doesn't support API mode
+        config.IsUseApi = false;
+
         return RunConsole("get-snapshot --raw", config).AwaitFinished(-1).WorkspaceFile;
       }
     }
@@ -284,7 +320,34 @@ namespace JetBrains.Profiler.SelfApi
       
       if (config.IsOpenDotMemory)
         commandLine.Append(" --open-dotmemory");
+
+      DynamicMemoryProfilerApi api = null;
+      if (config.IsUseApi.HasValue)
+      {
+        if (config.IsUseApi.Value)
+        {
+          Trace.Info("DotMemory.RunConsole: force to use API");
+          api = DynamicMemoryProfilerApi.TryCreate();
+          if (api == null)
+            throw new InvalidOperationException("Unable to load `JetBrains.Profiler.Api` assembly.");
+        }
+        else
+        {
+          Trace.Info("DotMemory.RunConsole: force to do not use API");
+        }
+      }
+      else // auto mode
+      {
+        Trace.Info("DotMemory.RunConsole: auto API mode...");
+        api = DynamicMemoryProfilerApi.TryCreate();
+        Trace.Info(api != null
+          ? "DotMemory.RunConsole: API assembly found, will use it"
+          : "DotMemory.RunConsole: API assembly not found, will use service messages");
+      }
       
+      if (api != null)
+        commandLine.Append(" --use-api");
+
       Trace.Info("DotMemory.RunConsole:\n  runner = `{0}`\n  arguments = `{1}`", runnerPath, commandLine);
     
       var console = Process.Start(
@@ -305,7 +368,7 @@ namespace JetBrains.Profiler.SelfApi
       
       Trace.Verbose("DotMemory.RunConsole: Runner started.");
 
-      return new Session(console, workspaceFile);
+      return new Session(console, api, workspaceFile);
     }
 
     private sealed class Prerequisite : PrerequisiteBase
@@ -376,10 +439,12 @@ namespace JetBrains.Profiler.SelfApi
       private readonly List<string> _outputLines = new List<string>();
       private readonly List<string> _errorLines = new List<string>();
       private readonly Process _console;
+      private readonly DynamicMemoryProfilerApi _profilerApi;
 
-      public Session(Process console, string workspaceFile)
+      public Session(Process console, DynamicMemoryProfilerApi profilerApi, string workspaceFile)
       {
         _console = console;
+        _profilerApi = profilerApi;
         
         console.OutputDataReceived +=
           (sender, args) =>
@@ -418,14 +483,20 @@ namespace JetBrains.Profiler.SelfApi
       [SuppressMessage("ReSharper", "MemberHidesStaticFromOuterClass")]
       public Session Detach()
       {
-        Send("disconnect");
+        if (_profilerApi != null)
+          _profilerApi.Detach();
+        else
+          Send("disconnect");
         return this;
       }
       
       [SuppressMessage("ReSharper", "MemberHidesStaticFromOuterClass")]
       public Session GetSnapshot(string name)
       {
-        Send("get-snapshot", "name", name);
+        if (_profilerApi != null)
+          _profilerApi.GetSnapshot(name);
+        else
+          Send("get-snapshot", "name", name);
         return this;
       }
       
@@ -434,6 +505,21 @@ namespace JetBrains.Profiler.SelfApi
         var regex = new Regex(__dotMemory + @"\[\x22connected\x22,\s*\{.*\}\]", RegexOptions.Compiled | RegexOptions.IgnoreCase);
         if (TryAwaitFor(regex, milliseconds) == null)
           throw ConsoleException("The dotMemory console profiler was not connected. See details below.");
+        
+        if (_profilerApi != null)
+        {
+          var startTime = DateTime.UtcNow;
+          while ((_profilerApi.GetFeatures() & 0x1) != 0x1)
+          {
+            if (_console.HasExited)
+              throw ConsoleException("The dotMemory console profiler has exited unexpectedly. See details below.");
+
+            if (milliseconds >= 0 && (DateTime.UtcNow - startTime).TotalMilliseconds > milliseconds)
+              throw ConsoleException("The Profiler.Api was not became ready in given time. See details below.");
+
+            Thread.Sleep(40);
+          }
+        }
 
         return this;
       }

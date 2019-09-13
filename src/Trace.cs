@@ -1,3 +1,4 @@
+using System;
 using System.Diagnostics;
 using System.Threading;
 
@@ -85,6 +86,22 @@ namespace JetBrains.Profiler.SelfApi
         public static void Info(string format, params object[] arguments)
         {
             Source.TraceEvent(TraceEventType.Information, Interlocked.Increment(ref _id), format, arguments);
+        }
+        
+        /// <summary>
+        /// Writes message with ERROR level.
+        /// </summary>
+        public static void Error(string message)
+        {
+            Source.TraceEvent(TraceEventType.Error, Interlocked.Increment(ref _id), message);
+        }
+        
+        /// <summary>
+        /// Writes message with ERROR level.
+        /// </summary>
+        public static void Error(string message, Exception exception)
+        {
+            Source.TraceEvent(TraceEventType.Error, Interlocked.Increment(ref _id), message + Environment.NewLine + exception);
         }
     }
 }
