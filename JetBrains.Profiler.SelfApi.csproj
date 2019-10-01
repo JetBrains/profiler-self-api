@@ -15,7 +15,7 @@
     <PackageIconUrl>https://resources.jetbrains.com/storage/products/resharper/img/meta/ReSharper_64.png</PackageIconUrl>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
     <TargetFrameworks>net46;netcoreapp3.0</TargetFrameworks>
-    <PackageVersion>0.3.8-preview1</PackageVersion>
+    <PackageVersion>0.3.10-preview1</PackageVersion>
   </PropertyGroup>
   <ItemGroup>
     <Compile Remove="_ReSharper.Caches\**" />
