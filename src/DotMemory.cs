@@ -25,7 +25,7 @@ namespace JetBrains.Profiler.SelfApi
   /// * take over generated workspace for investigation<br/>
   ///<br/>
   /// Use case: self profiling as part of troubleshooting on production  
-  /// * install NuGet (just NuGet, no any other actions required); or simple copy this file into your project
+  /// * install NuGet (just NuGet, no any other actions required)
   /// * in handler of awesome `Gather trouble report` action call DotMemory.EnsurePrerequisite()
   /// * then call DotMemory.GetSnapshotOnce
   /// * include generated workspace into report 
@@ -35,26 +35,21 @@ namespace JetBrains.Profiler.SelfApi
   public static class DotMemory
   {
     /// <summary>
+    /// The version of JetBrains.dotMemory.Console NuGet-package which will be downloaded. 
+    /// </summary>
+    public const string NupkgVersion = "192.0.20190807.154300";
+    
+    /// <summary>
     /// Self profiling configuration.
     /// </summary>
     public sealed class Config
     {
-      internal string PrerequisitePath;
       internal string WorkspaceFile;
       internal string WorkspaceDir;
       internal bool IsOpenDotMemory;
       internal bool IsOverwriteWorkspace;
       internal bool? IsUseApi;
 
-      /// <summary>
-      /// Specifies path to install prerequisite to.
-      /// </summary>
-      public Config UsePrerequisitePath(string prerequisitePath)
-      {
-        PrerequisitePath = prerequisitePath ?? throw new ArgumentNullException(nameof(prerequisitePath));
-        return this;
-      }
-      
       /// <summary>
       /// Specifies file to save workspace to. 
       /// </summary>
@@ -133,19 +128,23 @@ namespace JetBrains.Profiler.SelfApi
     /// Ensures prerequisite (dotMemory console runner) for current OS and process bitness is downloaded and ready to use.
     /// </summary>
     /// <remarks>
-    /// Be aware:  
+    /// 1. Looking for `dotMemory.exe` in the same folder as executing assembly. Uses it if found one.<br/>
+    /// 2. Otherwise downloads `JetBrains.dotMemory.Console` NuGet-package into <paramref name="downloadTo"/>
+    /// folder and uses runner from this package. The package version to be downloaded is defined by <see cref="NupkgVersion"/> constant.
+    /// Actually, runner will be located in `{downloadTo}/dotMemory.{NupkgVersion}/dotMemory.exe`
+    /// If one already exists then no download performed.
     /// </remarks>
     /// <param name="cancellationToken">The cancellation token</param>
     /// <param name="progress">The progress callback. The progress is reported in range [0.0; 100.0]. If null progress will not be reported.</param>
     /// <param name="nugetUrl">The URL of NuGet mirror. If null the default www.nuget.org will be used.</param>
     /// <param name="nugetApi">The NuGet API version.</param>
-    /// <param name="prerequisitePath">The path to download prerequisite to. If null %LocalAppData% is used.</param>
+    /// <param name="downloadTo">The path to download prerequisite to. If null %LocalAppData% is used.</param>
     public static Task EnsurePrerequisiteAsync(
       CancellationToken cancellationToken, 
       IProgress<double> progress = null, 
       Uri nugetUrl = null, 
       NuGetApi nugetApi = NuGetApi.V3,
-      string prerequisitePath = null)
+      string downloadTo = null)
     {
       lock (OurMutex)
       {
@@ -156,9 +155,9 @@ namespace JetBrains.Profiler.SelfApi
         }
 
         _prerequisiteTask = null;
-        _prerequisitePath = prerequisitePath;
+        _prerequisitePath = downloadTo;
 
-        if (OurPrerequisite.TryGetRunner(prerequisitePath, out _))
+        if (OurPrerequisite.TryGetRunner(downloadTo, out _))
         {
           Trace.Verbose("DotMemory.EnsurePrerequisite: Runner found, no async task needed.");
           return _prerequisiteTask = Task.FromResult(Missing.Value);
@@ -169,7 +168,7 @@ namespace JetBrains.Profiler.SelfApi
         
         Trace.Verbose("DotMemory.EnsurePrerequisite: Runner not found, starting download...");
         return _prerequisiteTask = OurPrerequisite
-          .DownloadAsync(nugetUrl, nugetApi, prerequisitePath, progress, cancellationToken);
+          .DownloadAsync(nugetUrl, nugetApi, downloadTo, progress, cancellationToken);
       }
     }
 
@@ -180,9 +179,9 @@ namespace JetBrains.Profiler.SelfApi
       IProgress<double> progress = null,
       Uri nugetUrl = null, 
       NuGetApi nugetApi = NuGetApi.V3,
-      string prerequisitePath = null)
+      string downloadTo = null)
     {
-      return EnsurePrerequisiteAsync(CancellationToken.None, progress, nugetUrl, nugetApi, prerequisitePath);
+      return EnsurePrerequisiteAsync(CancellationToken.None, progress, nugetUrl, nugetApi, downloadTo);
     }
 
     /// <summary>
@@ -191,9 +190,9 @@ namespace JetBrains.Profiler.SelfApi
     public static void EnsurePrerequisite(
       Uri nugetUrl = null, 
       NuGetApi nugetApi = NuGetApi.V3,
-      string prerequisitePath = null)
+      string downloadTo = null)
     {
-      EnsurePrerequisiteAsync(null, nugetUrl, nugetApi, prerequisitePath).Wait();
+      EnsurePrerequisiteAsync(null, nugetUrl, nugetApi, downloadTo).Wait();
     }
     
     /// <summary>
@@ -307,7 +306,7 @@ namespace JetBrains.Profiler.SelfApi
     private static Session RunConsole(string command, Config config)
     {
       Trace.Verbose("DotMemory.RunConsole: Looking for runner...");
-      if (!OurPrerequisite.TryGetRunner(config.PrerequisitePath ?? _prerequisitePath, out var runnerPath))
+      if (!OurPrerequisite.TryGetRunner(_prerequisitePath, out var runnerPath))
         throw new InvalidOperationException("Something went wrong: the dotMemory console profiler not found.");
       
       var workspaceFile = GetSaveToFilePath(config);
@@ -373,7 +372,7 @@ namespace JetBrains.Profiler.SelfApi
 
     private sealed class Prerequisite : PrerequisiteBase
     {
-      public Prerequisite() : base("dotMemory", "192.0.20190807.154300")
+      public Prerequisite() : base("dotMemory", NupkgVersion)
       {
       }
       
