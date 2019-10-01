@@ -1,10 +1,14 @@
 using System;
+using System.IO;
 using System.Linq;
 using System.Net.Http;
 using System.Runtime.Serialization;
 using System.Runtime.Serialization.Json;
 using System.Threading;
 using System.Threading.Tasks;
+using System.Xml;
+using System.Xml.Linq;
+using System.Xml.XPath;
 
 namespace JetBrains.Profiler.SelfApi.Impl
 {
@@ -66,7 +70,7 @@ namespace JetBrains.Profiler.SelfApi.Impl
 
         public static class V2
         {
-            public static readonly Uri NugetOrgUrl = new Uri("https://www.nuget.org/api/v2/package");
+            public static readonly Uri NugetOrgUrl = new Uri("https://www.nuget.org/api/v2");
             
             public static async Task<HttpContent> GetNupkgContentAsync(
                 HttpClient http,
@@ -75,7 +79,9 @@ namespace JetBrains.Profiler.SelfApi.Impl
                 string packageVersion,
                 CancellationToken cancellationToken)
             {
-                var packageUrl = nugetUrl.Combine($"{packageId}/{packageVersion}");
+                var indexUrl = nugetUrl.Combine($"Packages(Id='{packageId}',Version='{packageVersion}')");
+                var pkgEntry = await GetEntryAsync(http, indexUrl, cancellationToken).ConfigureAwait(false);
+                var packageUrl = pkgEntry.ContentSrc;
                 
                 Trace.Info("NuGet.V2.GetNupkgContent: {0}", packageUrl);
                 var response = await http
@@ -85,6 +91,68 @@ namespace JetBrains.Profiler.SelfApi.Impl
                 response.EnsureSuccessStatusCode();
 
                 return response.Content;
+            }
+            
+            private static async Task<Entry> GetEntryAsync(
+                HttpClient http, 
+                Uri url,
+                CancellationToken cancellationToken)
+            {
+                Trace.Info("NuGet.V2.GetEntry: {0}", url);
+                using (var response = await http
+                    .GetAsync(url, HttpCompletionOption.ResponseHeadersRead, cancellationToken)
+                    .ConfigureAwait(false))
+                {
+                    response.EnsureSuccessStatusCode();
+                    using (var xml = await response.Content.ReadAsStreamAsync().ConfigureAwait(false))
+                    {
+                        return Entry.FromStream(xml);
+                    }
+                }
+            }
+            
+            private sealed class Entry
+            {
+                private readonly XDocument _doc;
+                private readonly XmlNamespaceManager _ns;
+
+                private Entry(XDocument doc, XmlNamespaceManager ns)
+                {
+                    _doc = doc;
+                    _ns = ns;
+                    
+                    _ns.AddNamespace("a", "http://www.w3.org/2005/Atom");
+                }
+
+                public string ContentSrc
+                {
+                    get
+                    {
+                        var value = ValueOf("//a:entry/a:content/@src");
+                        if (value == null)
+                            throw new InvalidOperationException("Something went wrong: unable to find content/@src");
+                        return value;
+                    }
+                }
+                
+                private string ValueOf(string xpath, string defaultValue = null)
+                {
+                    var nav = _doc.CreateNavigator(_ns.NameTable);
+                    var subNode = nav.SelectSingleNode(xpath, _ns);
+                    return subNode == null
+                        ? defaultValue
+                        : subNode.Value;
+                }
+
+                public static Entry FromStream(Stream stream)
+                {
+                    using (var reader = XmlReader.Create(new StreamReader(stream)))
+                    {
+                        var xdoc = XDocument.Load(reader);
+                        // ReSharper disable once AssignNullToNotNullAttribute
+                        return new Entry(xdoc, new XmlNamespaceManager(reader.NameTable));
+                    }
+                }
             }
         }
 
