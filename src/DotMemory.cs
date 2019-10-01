@@ -44,12 +44,42 @@ namespace JetBrains.Profiler.SelfApi
     /// </summary>
     public sealed class Config
     {
+      internal string LogLevel;
+      internal string LogFile;
       internal string WorkspaceFile;
       internal string WorkspaceDir;
       internal bool IsOpenDotMemory;
       internal bool IsOverwriteWorkspace;
       internal bool? IsUseApi;
+      internal string OtherArguments;
 
+      /// <summary>
+      /// Specifies TRACE log level. 
+      /// </summary>
+      public Config UseLogLevelTrace()
+      {
+        LogLevel = "Trace";
+        return this;
+      }
+      
+      /// <summary>
+      /// Specifies VERBOSE log level. 
+      /// </summary>
+      public Config UseLogLevelVerbose()
+      {
+        LogLevel = "Verbose";
+        return this;
+      }
+      
+      /// <summary>
+      /// Specifies VERBOSE log level. 
+      /// </summary>
+      public Config UseLogFile(string filePath)
+      {
+        LogFile = filePath ?? throw new ArgumentNullException(nameof(filePath));
+        return this;
+      }
+      
       /// <summary>
       /// Specifies file to save workspace to. 
       /// </summary>
@@ -81,6 +111,21 @@ namespace JetBrains.Profiler.SelfApi
       public Config OpenDotMemory()
       {
         IsOpenDotMemory = true;
+        return this;
+      }
+      
+      /// <summary>
+      /// Appends arbitrary argument to command line as is (without any quoting, etc).
+      /// </summary>
+      public Config WithCommandLineArgument(string argument)
+      {
+        if (argument == null) throw new ArgumentNullException(nameof(argument));
+        
+        if (OtherArguments != null)
+          OtherArguments += " " + argument;
+        else
+          OtherArguments = argument;
+        
         return this;
       }
       
@@ -312,6 +357,13 @@ namespace JetBrains.Profiler.SelfApi
       var workspaceFile = GetSaveToFilePath(config);
       
       var commandLine = new StringBuilder();
+
+      if (config.LogLevel != null)
+        commandLine.Append($"--log-level={config.LogLevel} ");
+      
+      if (config.LogFile != null)
+        commandLine.Append($"\"--log-file={config.LogFile}\" ");
+      
       commandLine.Append($"{command} {Process.GetCurrentProcess().Id} \"-f={workspaceFile}\"");
 
       if (config.IsOverwriteWorkspace)
@@ -346,6 +398,9 @@ namespace JetBrains.Profiler.SelfApi
       
       if (api != null)
         commandLine.Append(" --use-api");
+
+      if (config.OtherArguments != null)
+        commandLine.Append(' ').Append(config.OtherArguments);
 
       Trace.Info("DotMemory.RunConsole:\n  runner = `{0}`\n  arguments = `{1}`", runnerPath, commandLine);
     
