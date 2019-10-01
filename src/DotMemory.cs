@@ -495,7 +495,10 @@ namespace JetBrains.Profiler.SelfApi
         if (_profilerApi != null)
           _profilerApi.GetSnapshot(name);
         else
+        {
           Send("get-snapshot", "name", name);
+          AwaitSnapshotSaved();
+        }
         return this;
       }
       
@@ -520,6 +523,13 @@ namespace JetBrains.Profiler.SelfApi
           }
         }
 
+        return this;
+      }
+      
+      private Session AwaitSnapshotSaved()
+      {
+        var regex = new Regex(__dotMemory + @"\[\x22snapshot-saved\x22,\s*\{.*\}\]", RegexOptions.Compiled | RegexOptions.IgnoreCase);
+        TryAwaitFor(regex, -1);
         return this;
       }
       
