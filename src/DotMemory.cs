@@ -13,34 +13,37 @@ using JetBrains.Profiler.SelfApi.Impl;
 namespace JetBrains.Profiler.SelfApi
 {
   /// <summary>
-  /// The dotMemory self profiling API based on single-exe console runner which is automatically downloaded as NuGet-package. 
+  /// The API lets you initiate and control profiling sessions right from the code of your application.
+  /// For example, this can be helpful for profiling the application on end-user desktops or production servers.
+  /// The API uses the dotMemory.exe command-line profiler (the tool is downloaded automatically)
   /// </summary>
   /// <remarks>
-  /// Use case: ad-hoc profiling<br/>
-  /// * install NuGet (just NuGet, no any other actions required)<br/>
-  /// * on initialization phase call DotMemory.EnsurePrerequisite()<br/>
-  /// * in profiled peace of code call DotMemory.GetSnapshotOnce (or Attach/GetSnapshot*/Detach)<br/>
-  /// * deploy to staging<br/>
-  /// * reproduce issue<br/>
-  /// * take over generated workspace for investigation<br/>
+  /// Use case 1: ad-hoc profiling <br/>
+  /// * install the JetBrains.Profiler.SelfApi package to your project<br/>
+  /// * to initialize the API, call DotMemory.EnsurePrerequisite()<br/>
+  /// * to get just one memory snapshot, call DotMemory.GetSnapshotOnce<br/>
+  /// * or in case you need several snapshots, call Attach/GetSnapshot*/Detach<br/>
+  /// * deploy your application<br/>
+  /// * reproduce the issue<br/>
+  /// * investigate the generated workspace with snapshots using JetBrains dotMemory<br/>
   ///<br/>
-  /// Use case: self profiling as part of troubleshooting on production  
-  /// * install NuGet (just NuGet, no any other actions required)
-  /// * in handler of awesome `Gather trouble report` action call DotMemory.EnsurePrerequisite()
-  /// * then call DotMemory.GetSnapshotOnce
-  /// * include generated workspace into report 
+  /// Use case 2: self-profiling as a part of troubleshooting on a production server<br/>
+  /// * install the JetBrains.Profiler.SelfApi package to your project<br/>
+  /// * in handler of awesome `Gather trouble report` action call DotMemory.EnsurePrerequisite()<br/>
+  /// * to get a memory snapshot, call DotMemory.GetSnapshotOnce<br/>
+  /// * include the generated workspace with snapshots into the report<br/>
   /// </remarks>
   [SuppressMessage("ReSharper", "UnusedMethodReturnValue.Local")]
   [SuppressMessage("ReSharper", "UnusedMember.Global")]
   public static class DotMemory
   {
     /// <summary>
-    /// The version of JetBrains.dotMemory.Console NuGet-package which will be downloaded. 
+    /// The version of JetBrains.dotMemory.Console NuGet-package that must be downloaded.
     /// </summary>
     public const string NupkgVersion = "192.0.20190807.154300";
     
     /// <summary>
-    /// Self profiling configuration.
+    /// Self-profiling configuration
     /// </summary>
     public sealed class Config
     {
@@ -54,7 +57,7 @@ namespace JetBrains.Profiler.SelfApi
       internal string OtherArguments;
 
       /// <summary>
-      /// Specifies TRACE log level. 
+      /// Sets the TRACE logging level.
       /// </summary>
       public Config UseLogLevelTrace()
       {
@@ -63,7 +66,7 @@ namespace JetBrains.Profiler.SelfApi
       }
       
       /// <summary>
-      /// Specifies VERBOSE log level. 
+      /// Sets the VERBOSE logging level.
       /// </summary>
       public Config UseLogLevelVerbose()
       {
@@ -72,7 +75,7 @@ namespace JetBrains.Profiler.SelfApi
       }
       
       /// <summary>
-      /// Specifies VERBOSE log level. 
+      /// Specifies the path to the log file.
       /// </summary>
       public Config UseLogFile(string filePath)
       {
@@ -81,7 +84,7 @@ namespace JetBrains.Profiler.SelfApi
       }
       
       /// <summary>
-      /// Specifies file to save workspace to. 
+      /// Specifies the path to the workspace file (snapshots storage).
       /// </summary>
       public Config SaveToFile(string filePath, bool overwrite = false)
       {
@@ -94,7 +97,7 @@ namespace JetBrains.Profiler.SelfApi
       }
       
       /// <summary>
-      /// Specifies directory to save workspace to (file name will be auto generated). 
+      /// Specifies the path to the workspace directory (filename will be auto-generated).
       /// </summary>
       public Config SaveToDir(string dirPath)
       {
@@ -106,7 +109,7 @@ namespace JetBrains.Profiler.SelfApi
       }
       
       /// <summary>
-      /// Specifies to open produced workspace in dotMemory UI.
+      /// Specifies whether to open the generated workspace in JetBrains dotMemory.
       /// </summary>
       public Config OpenDotMemory()
       {
@@ -115,7 +118,7 @@ namespace JetBrains.Profiler.SelfApi
       }
       
       /// <summary>
-      /// Appends arbitrary argument to command line as is (without any quoting, etc).
+      /// Appends an arbitrary argument to the command line as is (without any quoting, and so on).
       /// </summary>
       public Config WithCommandLineArgument(string argument)
       {
@@ -130,11 +133,11 @@ namespace JetBrains.Profiler.SelfApi
       }
       
       /// <summary>
-      /// Specifies to use `JetBrains.Profiler.Api` to control snapshots.
+      /// Specifies whether to use `JetBrains.Profiler.Api` to control the profiling session.
       /// </summary>
       /// <remarks>
-      /// By default, the `JetBrains.Profiler.Api` is used automatically if appropriate assembly successfully loaded.
-      /// Otherwise console runner's service messages are used.
+      /// `JetBrains.Profiler.Api` is used by default if the corresponding assembly was successfully loaded.
+      /// Otherwise, service messages of dotMemory.exe is used to control the session.
       /// </remarks>
       public Config UseApi()
       {
@@ -146,11 +149,11 @@ namespace JetBrains.Profiler.SelfApi
       }
       
       /// <summary>
-      /// Specifies to DO NOT use `JetBrains.Profiler.Api` to control snapshots.
+      /// Prohibits using `JetBrains.Profiler.Api` to control the profiling session.
       /// </summary>
       /// <remarks>
-      /// By default, the `JetBrains.Profiler.Api` is used automatically if appropriate assembly successfully loaded.
-      /// Otherwise console runner's service messages are used.
+      /// `JetBrains.Profiler.Api` is used by default if the corresponding assembly was successfully loaded.
+      /// Otherwise, service messages of dotMemory.exe is used to control the session.
       /// </remarks>
       public Config DoNotUseApi()
       {
@@ -170,20 +173,20 @@ namespace JetBrains.Profiler.SelfApi
     private static Session _session;
 
     /// <summary>
-    /// Ensures prerequisite (dotMemory console runner) for current OS and process bitness is downloaded and ready to use.
+    /// Makes sure that the dotMemory.exe command-line profiler is downloaded and is ready to use.
     /// </summary>
     /// <remarks>
-    /// 1. Looking for `dotMemory.exe` in the same folder as executing assembly. Uses it if found one.<br/>
-    /// 2. Otherwise downloads `JetBrains.dotMemory.Console` NuGet-package into <paramref name="downloadTo"/>
-    /// folder and uses runner from this package. The package version to be downloaded is defined by <see cref="NupkgVersion"/> constant.
-    /// Actually, runner will be located in `{downloadTo}/dotMemory.{NupkgVersion}/dotMemory.exe`
-    /// If one already exists then no download performed.
+    /// 1. Looks for `dotMemory.exe` in the same folder with the running assembly. Uses it if it's found.<br/>
+    /// 2. Downloads `JetBrains.dotMemory.Console` NuGet package into the <paramref name="downloadTo"/>
+    /// folder and uses the dotMemory.exe command-line profiler from this package. The package version is defined by <see cref="NupkgVersion"/>.
+    /// The command-line profiler is saved to `{downloadTo}/dotMemory.{NupkgVersion}/dotMemory.exe`
+    /// If the file exists, a new one is not downloaded.
     /// </remarks>
-    /// <param name="cancellationToken">The cancellation token</param>
-    /// <param name="progress">The progress callback. The progress is reported in range [0.0; 100.0]. If null progress will not be reported.</param>
-    /// <param name="nugetUrl">The URL of NuGet mirror. If null the default www.nuget.org will be used.</param>
-    /// <param name="nugetApi">The NuGet API version.</param>
-    /// <param name="downloadTo">The path to download prerequisite to. If null %LocalAppData% is used.</param>
+    /// <param name="cancellationToken">Cancellation token</param>
+    /// <param name="progress">Download progress callback from 0.0 to 100.0. If null, progress is not reported.</param>
+    /// <param name="nugetUrl">URL of NuGet mirror. If null, www.nuget.org is used.</param>
+    /// <param name="nugetApi">NuGet API version.</param>
+    /// <param name="downloadTo">NuGet download destination folder. If null, %LocalAppData% is used.</param>
     public static Task EnsurePrerequisiteAsync(
       CancellationToken cancellationToken, 
       IProgress<double> progress = null, 
@@ -273,7 +276,7 @@ namespace JetBrains.Profiler.SelfApi
     }
 
     /// <summary>
-    /// Attaches dotMemory to current process with default configuration.
+    /// Attaches dotMemory to the current process using the default API configuration.
     /// </summary>
     public static void Attach()
     {
@@ -281,7 +284,7 @@ namespace JetBrains.Profiler.SelfApi
     }
 
     /// <summary>
-    /// Attaches dotMemory to current process with specified configuration.
+    /// Attaches dotMemory to the current process using the specified API configuration.
     /// </summary>
     public static void Attach(Config config)
     {
@@ -300,7 +303,7 @@ namespace JetBrains.Profiler.SelfApi
     }
 
     /// <summary>
-    /// Detaches dotMemory from current process.
+    /// Detaches dotMemory from the current process.
     /// </summary>
     /// <returns>Saved workspace file path.</returns>
     public static string Detach()
@@ -322,7 +325,7 @@ namespace JetBrains.Profiler.SelfApi
     }
     
     /// <summary>
-    /// Gets memory snapshot of current process.
+    /// Gets a memory snapshot of the current process.
     /// </summary>
     /// <param name="name">Optional snapshot name.</param>
     public static void GetSnapshot(string name = null)
