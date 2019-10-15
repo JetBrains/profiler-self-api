@@ -136,8 +136,8 @@ namespace JetBrains.Profiler.SelfApi
       /// Specifies whether to use `JetBrains.Profiler.Api` to control the profiling session.
       /// </summary>
       /// <remarks>
-      /// `JetBrains.Profiler.Api` is used by default if the corresponding assembly was successfully loaded.
-      /// Otherwise, service messages of dotMemory.exe is used to control the session.
+      /// By default, `JetBrains.Profiler.Api` is used to control the session (if the corresponding assembly was successfully loaded).
+      /// Otherwise, the self-profiling API uses dotMemory.exe service messages to control the session.
       /// </remarks>
       public Config UseApi()
       {
@@ -152,8 +152,8 @@ namespace JetBrains.Profiler.SelfApi
       /// Prohibits using `JetBrains.Profiler.Api` to control the profiling session.
       /// </summary>
       /// <remarks>
-      /// `JetBrains.Profiler.Api` is used by default if the corresponding assembly was successfully loaded.
-      /// Otherwise, service messages of dotMemory.exe is used to control the session.
+      /// By default, `JetBrains.Profiler.Api` is used to control the session (if the corresponding assembly was successfully loaded).
+      /// Otherwise, the self-profiling API uses dotMemory.exe service messages to control the session.
       /// </remarks>
       public Config DoNotUseApi()
       {
