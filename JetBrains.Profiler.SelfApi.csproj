@@ -13,7 +13,7 @@
     <PackageIconUrl>https://resources.jetbrains.com/storage/products/resharper/img/meta/ReSharper_64.png</PackageIconUrl>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
     <TargetFrameworks>net46;netcoreapp3.0</TargetFrameworks>
-    <PackageVersion>0.3.12-preview1</PackageVersion>
+    <PackageVersion>1.0.0-preview1</PackageVersion>
     <PackageLicenseUrl>https://resources.jetbrains.com/sales-config/config/agreements/TB/eua.html</PackageLicenseUrl>
     <AssemblyVersion>1.0.0</AssemblyVersion>
     <FileVersion>1.0.0</FileVersion>
