@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Net.Http;
@@ -67,6 +68,20 @@ namespace JetBrains.Profiler.SelfApi.Impl
 
             return builder.Uri;
         }
+        
+        public static Uri Query(this Uri baseUrl, string query)
+        {
+            return new UriBuilder(baseUrl) {Query = query}.Uri;
+        }
+
+        public static Version TryToVersion(this string version)
+        {
+            var idx = version.IndexOf('-');
+            if (idx >= 0)
+                version = version.Substring(0, idx);
+
+            return Version.TryParse(version, out var ret) ? ret : null;
+        }
 
         public static class V2
         {
@@ -79,9 +94,11 @@ namespace JetBrains.Profiler.SelfApi.Impl
                 string packageVersion,
                 CancellationToken cancellationToken)
             {
-                var indexUrl = nugetUrl.Combine($"Packages(Id='{packageId}',Version='{packageVersion}')");
-                var pkgEntry = await GetEntryAsync(http, indexUrl, cancellationToken).ConfigureAwait(false);
-                var packageUrl = pkgEntry.ContentSrc;
+                var indexUrl = nugetUrl.Combine("FindPackagesById()").Query($"id='{packageId}'");
+                var feed = await GetFeedAsync(http, indexUrl, cancellationToken).ConfigureAwait(false);
+
+                var latestEntry = GetLatestEntry(feed, packageVersion);
+                var packageUrl = latestEntry.ContentSrc;
                 
                 Trace.Info("NuGet.V2.GetNupkgContent: {0}", packageUrl);
                 var response = await http
@@ -93,12 +110,12 @@ namespace JetBrains.Profiler.SelfApi.Impl
                 return response.Content;
             }
             
-            private static async Task<Entry> GetEntryAsync(
+            private static async Task<Feed> GetFeedAsync(
                 HttpClient http, 
                 Uri url,
                 CancellationToken cancellationToken)
             {
-                Trace.Info("NuGet.V2.GetEntry: {0}", url);
+                Trace.Info("NuGet.V2.GetFeed: {0}", url);
                 using (var response = await http
                     .GetAsync(url, HttpCompletionOption.ResponseHeadersRead, cancellationToken)
                     .ConfigureAwait(false))
@@ -106,52 +123,97 @@ namespace JetBrains.Profiler.SelfApi.Impl
                     response.EnsureSuccessStatusCode();
                     using (var xml = await response.Content.ReadAsStreamAsync().ConfigureAwait(false))
                     {
-                        return Entry.FromStream(xml);
+                        return Feed.FromStream(xml);
+                    }
+                }
+            }
+
+            private static Entry GetLatestEntry(Feed feed, string packageVersion)
+            {
+                var basePkgVer = Version.Parse(packageVersion);
+                Entry latest = null;
+                foreach (var entry in feed.Entries)
+                {
+                    if (entry.Version == null ||
+                        entry.Version.Major != basePkgVer.Major ||
+                        entry.Version.Minor != basePkgVer.Minor)
+                        continue;
+
+                    if (latest == null || latest.Version < entry.Version)
+                        latest = entry;
+                }
+                
+                if (latest == null)
+                    throw new InvalidOperationException(
+                        $"Something went wrong: unable to find the latest package of v{packageVersion}");
+
+                return latest;
+            }
+            
+            private sealed class Feed
+            {
+                private readonly XResponseNode _root;
+
+                private Feed(XResponseNode root)
+                {
+                    _root = root;
+                }
+
+                public IEnumerable<Entry> Entries => _root.Select("//a:feed/a:entry").Select(x => new Entry(x));
+
+                public static Feed FromStream(Stream stream)
+                {
+                    using (var reader = XmlReader.Create(new StreamReader(stream)))
+                    {
+                        var xdoc = XDocument.Load(reader);
+                        // ReSharper disable once AssignNullToNotNullAttribute
+                        return new Feed(new XResponseNode(xdoc.Root, new XmlNamespaceManager(reader.NameTable)));
                     }
                 }
             }
             
             private sealed class Entry
             {
-                private readonly XDocument _doc;
+                public Entry(XResponseNode node)
+                {
+                    ContentSrc = 
+                        node.ValueOf("a:content/@src") 
+                        ?? throw new InvalidOperationException("Something went wrong: unable to find content/@src");
+
+                    Version = TryToVersion(node.ValueOf("m:properties/d:Version"));
+                }
+
+                public string ContentSrc { get; }
+                public Version Version { get; }
+            }
+            
+            private sealed class XResponseNode
+            {
+                private readonly XElement _element;
                 private readonly XmlNamespaceManager _ns;
 
-                private Entry(XDocument doc, XmlNamespaceManager ns)
+                public XResponseNode(XElement element, XmlNamespaceManager ns)
                 {
-                    _doc = doc;
+                    _element = element;
                     _ns = ns;
                     
                     _ns.AddNamespace("a", "http://www.w3.org/2005/Atom");
+                    _ns.AddNamespace("d", "http://schemas.microsoft.com/ado/2007/08/dataservices");
+                    _ns.AddNamespace("m", "http://schemas.microsoft.com/ado/2007/08/dataservices/metadata");
                 }
 
-                public string ContentSrc
+                public IEnumerable<XResponseNode> Select(string xpath)
                 {
-                    get
-                    {
-                        var value = ValueOf("//a:entry/a:content/@src");
-                        if (value == null)
-                            throw new InvalidOperationException("Something went wrong: unable to find content/@src");
-                        return value;
-                    }
+                    return _element.XPathSelectElements(xpath, _ns).Select(x => new XResponseNode(x, _ns));
                 }
                 
-                private string ValueOf(string xpath, string defaultValue = null)
+                public string ValueOf(string xpath, string defaultValue = null)
                 {
-                    var nav = _doc.CreateNavigator(_ns.NameTable);
+                    var nav = _element.CreateNavigator(_ns.NameTable);
                     var subNode = nav.SelectSingleNode(xpath, _ns);
                     return subNode == null
                         ? defaultValue
                         : subNode.Value;
-                }
-
-                public static Entry FromStream(Stream stream)
-                {
-                    using (var reader = XmlReader.Create(new StreamReader(stream)))
-                    {
-                        var xdoc = XDocument.Load(reader);
-                        // ReSharper disable once AssignNullToNotNullAttribute
-                        return new Entry(xdoc, new XmlNamespaceManager(reader.NameTable));
-                    }
                 }
             }
         }
@@ -168,17 +230,20 @@ namespace JetBrains.Profiler.SelfApi.Impl
                 CancellationToken cancellationToken)
             {
                 packageId = packageId.ToLowerInvariant();
-                packageVersion = packageVersion.ToLowerInvariant();
                 
                 var serviceIndex = await GetIndexAsync(http, indexUrl, cancellationToken).ConfigureAwait(false);
                 var packageBaseUrl = serviceIndex.GetResourceUrl("PackageBaseAddress/3.0.0");
 
-                var packageUrl = packageBaseUrl
-                    .Combine($"{packageId}/{packageVersion}/{packageId}.{packageVersion}.nupkg");
+                var packageIndexUrl = packageBaseUrl.Combine($"{packageId}/index.json");
+                var packageIndex = await GetVersionsAsync(http, packageIndexUrl, cancellationToken).ConfigureAwait(false);
+                var latestVersion = packageIndex.GetLatestVersion(packageVersion);
                 
-                Trace.Info("NuGet.V3.GetNupkgContent: {0}", packageUrl);
+                var packageContentUrl = packageBaseUrl
+                    .Combine($"{packageId}/{latestVersion}/{packageId}.{latestVersion}.nupkg");
+                
+                Trace.Info("NuGet.V3.GetNupkgContent: {0}", packageContentUrl);
                 var response = await http
-                    .GetAsync(packageUrl, HttpCompletionOption.ResponseHeadersRead, cancellationToken)
+                    .GetAsync(packageContentUrl, HttpCompletionOption.ResponseHeadersRead, cancellationToken)
                     .ConfigureAwait(false);
                 
                 response.EnsureSuccessStatusCode();
@@ -204,6 +269,25 @@ namespace JetBrains.Profiler.SelfApi.Impl
                     }
                 }
             }
+            
+            private static async Task<PackageIndex> GetVersionsAsync(
+                HttpClient http, 
+                Uri indexUrl,
+                CancellationToken cancellationToken)
+            {
+                Trace.Info("NuGet.V3.GetVersions: {0}", indexUrl);
+                using (var response = await http
+                    .GetAsync(indexUrl, HttpCompletionOption.ResponseHeadersRead, cancellationToken)
+                    .ConfigureAwait(false))
+                {
+                    response.EnsureSuccessStatusCode();
+                    using (var indexJson = await response.Content.ReadAsStreamAsync().ConfigureAwait(false))
+                    {
+                        return (PackageIndex) new DataContractJsonSerializer(typeof(PackageIndex))
+                            .ReadObject(indexJson);
+                    }
+                }
+            }
 
 #pragma warning disable 649
             [DataContract]
@@ -219,8 +303,7 @@ namespace JetBrains.Profiler.SelfApi.Impl
                 {
                     var resource = Resources.FirstOrDefault(x => x.Type == resourceType);
                     if (resource == null || string.IsNullOrEmpty(resource.Id))
-                        throw new InvalidOperationException(
-                            $"Something went wrong: unable to find `{resourceType}`");
+                        throw new InvalidOperationException($"Something went wrong: unable to find `{resourceType}`");
 
                     return new Uri(resource.Id);
                 }
@@ -234,6 +317,28 @@ namespace JetBrains.Profiler.SelfApi.Impl
 
                 [DataMember(Name = "@type")]
                 public string Type;
+            }
+            
+            [DataContract]
+            private sealed class PackageIndex
+            {
+                [DataMember(Name = "versions")]
+                public string[] Versions;
+
+                public Version GetLatestVersion(string packageVersion)
+                {
+                    var basePkgVer = Version.Parse(packageVersion);
+                    var latest = Versions
+                        .Select(TryToVersion)
+                        .Where(v => v != null && v.Major == basePkgVer.Major && v.Minor == basePkgVer.Minor)
+                        .Max();
+                    
+                    if (latest == null)
+                        throw new InvalidOperationException(
+                            $"Something went wrong: unable to find the latest package of v{packageVersion}");
+
+                    return latest;
+                }
             }
 #pragma warning restore 649
         }
