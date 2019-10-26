@@ -133,7 +133,7 @@ namespace JetBrains.Profiler.SelfApi
       }
       
       /// <summary>
-      /// Specifies whether to use `JetBrains.Profiler.Api` to control the profiling session.
+      /// [Advanced use only] Specifies whether to use `JetBrains.Profiler.Api` to control the profiling session.
       /// </summary>
       /// <remarks>
       /// By default, `JetBrains.Profiler.Api` is used to control the session (if the corresponding assembly was successfully loaded).
@@ -149,7 +149,7 @@ namespace JetBrains.Profiler.SelfApi
       }
       
       /// <summary>
-      /// Prohibits using `JetBrains.Profiler.Api` to control the profiling session.
+      /// [Advanced use only] Prohibits using `JetBrains.Profiler.Api` to control the profiling session.
       /// </summary>
       /// <remarks>
       /// By default, `JetBrains.Profiler.Api` is used to control the session (if the corresponding assembly was successfully loaded).
