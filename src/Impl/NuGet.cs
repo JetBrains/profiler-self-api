@@ -325,19 +325,29 @@ namespace JetBrains.Profiler.SelfApi.Impl
                 [DataMember(Name = "versions")]
                 public string[] Versions;
 
-                public Version GetLatestVersion(string packageVersion)
+                public string GetLatestVersion(string packageVersion)
                 {
                     var basePkgVer = Version.Parse(packageVersion);
-                    var latest = Versions
-                        .Select(TryToVersion)
-                        .Where(v => v != null && v.Major == basePkgVer.Major && v.Minor == basePkgVer.Minor)
-                        .Max();
-                    
-                    if (latest == null)
+                    string latestPkgVer = null; // the latest found version including build meta-info
+                    Version latest = null;      // the latest parsed version w/o meta-info 
+                    foreach (var pkgVer in Versions)
+                    {
+                        var ver = TryToVersion(pkgVer);
+                        if (ver == null || ver.Major != basePkgVer.Major || ver.Minor != basePkgVer.Minor)
+                            continue;
+
+                        if (latest == null || latest < ver)
+                        {
+                            latestPkgVer = pkgVer;
+                            latest = ver;
+                        }
+                    }
+
+                    if (latestPkgVer == null)
                         throw new InvalidOperationException(
                             $"Something went wrong: unable to find the latest package of v{packageVersion}");
 
-                    return latest;
+                    return latestPkgVer;
                 }
             }
 #pragma warning restore 649
