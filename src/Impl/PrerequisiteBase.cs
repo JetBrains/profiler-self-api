@@ -30,82 +30,99 @@ namespace JetBrains.Profiler.SelfApi.Impl
             const double downloadWeigth = 0.8;
             const double unzipWeigth = 0.2;
 
-            downloadTo = string.IsNullOrEmpty(downloadTo)
-                ? GetAppLocalPath()
-                : Path.Combine(downloadTo, $"{Name}.{SemanticVersion}");
-
-            Trace.Info("Prerequisite.Download: targetPath = `{0}`", downloadTo);
-            Directory.CreateDirectory(downloadTo);
-
-            var nupkgName = GetPackageName();
-            var nupkgPath = Path.Combine(downloadTo, $"{nupkgName}.{SemanticVersion}.nupkg");
-            
-            using (var http = new HttpClient())
+            try
             {
-                Trace.Verbose("Prerequisite.Download: Requesting...");
-                var content = await http
-                    .GetNupkgContentAsync(nugetUrl, nugetApi, nupkgName, SemanticVersion, cancellationToken)
-                    .ConfigureAwait(false);
-                
-                Trace.Verbose("Prerequisite.Download: Saving...");
-                using (var input = await content.ReadAsStreamAsync().ConfigureAwait(false))
-                using (var output = File.Create(nupkgPath))
+                downloadTo = string.IsNullOrEmpty(downloadTo)
+                    ? GetAppLocalPath()
+                    : Path.Combine(downloadTo, $"{Name}.{SemanticVersion}");
+
+                Trace.Info("Prerequisite.Download: targetPath = `{0}`", downloadTo);
+                Directory.CreateDirectory(downloadTo);
+
+                var nupkgName = GetPackageName();
+                var nupkgPath = Path.Combine(downloadTo, $"{nupkgName}.{SemanticVersion}.nupkg");
+
+                using (var http = new HttpClient())
                 {
-                    Copy(
-                        input, 
-                        output, 
-                        content.Headers.ContentLength ?? GetEstimatedSize(), 
-                        new SubProgress(progress, 0, downloadWeigth)
-                    );
-                }
-            }
+                    Trace.Verbose("Prerequisite.Download: Requesting...");
+                    var content = await http
+                        .GetNupkgContentAsync(nugetUrl, nugetApi, nupkgName, SemanticVersion, cancellationToken)
+                        .ConfigureAwait(false);
 
-            const string toolsPrefix = "tools/";
-            
-            Trace.Verbose("Prerequisite.Download: Reading .nupkg ...");
-            using (var zipInput = File.OpenRead(nupkgPath))
-            using (var nupkg = new ZipArchive(zipInput))
-            {
-                var toolsEntries = nupkg.Entries
-                    .Where(x => x.FullName.StartsWith(toolsPrefix, StringComparison.OrdinalIgnoreCase))
-                    .ToArray();
-                
-                if (toolsEntries.Length == 0)
-                    throw new InvalidOperationException(
-                        "Something went wrong: unable to find /tools folder inside NuGet package.");
-
-                var totalLength = toolsEntries.Sum(x => x.Length);
-                Trace.Verbose(
-                    "Prerequisite.Download: Found {0} entries of total length {1} bytes.", 
-                    toolsEntries.Length, 
-                    totalLength
-                );
-
-                Trace.Verbose("Prerequisite.Download: Unpacking...");
-                var subStart = downloadWeigth * 100;
-                foreach (var entry in toolsEntries)
-                {
-                    var subStep = entry.Length * unzipWeigth / totalLength;
-                    var dstPath = Path.Combine(downloadTo, entry.FullName.Substring(toolsPrefix.Length));
-                    
-                    using (var input = entry.Open())
-                    using (var output = File.Create(dstPath))
+                    Trace.Verbose("Prerequisite.Download: Saving...");
+                    using (var input = await content.ReadAsStreamAsync().ConfigureAwait(false))
+                    using (var output = File.Create(nupkgPath))
                     {
-                        Trace.Verbose("Prerequisite.Download:   `{0}` -> `{1}`", entry.FullName, dstPath);
                         Copy(
                             input,
-                            output, 
-                            entry.Length, 
-                            new SubProgress(progress, subStart, subStep)
+                            output,
+                            content.Headers.ContentLength ?? GetEstimatedSize(),
+                            new SubProgress(progress, 0, downloadWeigth)
                         );
                     }
-
-                    subStart += subStep;
                 }
-            }
 
-            Trace.Verbose("Prerequisite.Download: Cleaning up...");
-            File.Delete(nupkgPath);
+                const string toolsPrefix = "tools/";
+
+                Trace.Verbose("Prerequisite.Download: Reading .nupkg ...");
+                using (var zipInput = File.OpenRead(nupkgPath))
+                using (var nupkg = new ZipArchive(zipInput))
+                {
+                    var toolsEntries = nupkg.Entries
+                        .Where(x => x.FullName.StartsWith(toolsPrefix, StringComparison.OrdinalIgnoreCase))
+                        .ToArray();
+
+                    if (toolsEntries.Length == 0)
+                        throw new InvalidOperationException(
+                            "Something went wrong: unable to find /tools folder inside NuGet package.");
+
+                    var totalLength = toolsEntries.Sum(x => x.Length);
+                    Trace.Verbose(
+                        "Prerequisite.Download: Found {0} entries of total length {1} bytes.",
+                        toolsEntries.Length,
+                        totalLength
+                    );
+
+                    Trace.Verbose("Prerequisite.Download: Unpacking...");
+                    var subStart = downloadWeigth * 100;
+                    foreach (var entry in toolsEntries)
+                    {
+                        var subStep = entry.Length * unzipWeigth / totalLength;
+                        var dstPath = Path.Combine(downloadTo, entry.FullName.Substring(toolsPrefix.Length));
+
+                        using (var input = entry.Open())
+                        using (var output = File.Create(dstPath))
+                        {
+                            Trace.Verbose("Prerequisite.Download:   `{0}` -> `{1}`", entry.FullName, dstPath);
+                            Copy(
+                                input,
+                                output,
+                                entry.Length,
+                                new SubProgress(progress, subStart, subStep)
+                            );
+                        }
+
+                        subStart += subStep;
+                    }
+                }
+
+                Trace.Verbose("Prerequisite.Download: Cleaning up...");
+                File.Delete(nupkgPath);
+            }
+            catch (HttpRequestException e)
+            {
+                throw new Exception(
+                    $"Failed to download prerequisite package. Please, check the NuGet URL and Internet connection.\n[{nugetUrl}]",
+                    e
+                );
+            }
+            catch (IOException e)
+            {
+                throw new Exception(
+                    $"Failed to save/unpack prerequisite package. Please, check the path and available disk space.\n[{downloadTo}]",
+                    e
+                );
+            }
         }
 
         public bool TryGetRunner(string prerequisitePath, out string runnerPath)
