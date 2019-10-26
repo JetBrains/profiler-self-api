@@ -14,7 +14,7 @@
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
     <TargetFrameworks>net46;netcoreapp3.0</TargetFrameworks>
     <PackageVersion>1.0.0-preview1</PackageVersion>
-    <PackageLicenseUrl>https://resources.jetbrains.com/sales-config/config/agreements/TB/eua.html</PackageLicenseUrl>
+    <PackageLicenseExpression>Apache-2.0</PackageLicenseExpression>
     <AssemblyVersion>1.0.0</AssemblyVersion>
     <FileVersion>1.0.0</FileVersion>
   </PropertyGroup>
