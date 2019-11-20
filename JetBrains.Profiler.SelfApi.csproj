@@ -13,7 +13,7 @@
     <PackageIconUrl>https://resources.jetbrains.com/storage/products/resharper/img/meta/ReSharper_64.png</PackageIconUrl>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
     <TargetFrameworks>net46;netcoreapp3.0</TargetFrameworks>
-    <PackageVersion>1.0.0-preview2</PackageVersion>
+    <PackageVersion>1.0.0-preview3</PackageVersion>
     <PackageLicenseExpression>Apache-2.0</PackageLicenseExpression>
     <AssemblyVersion>1.0.0</AssemblyVersion>
     <FileVersion>1.0.0</FileVersion>
