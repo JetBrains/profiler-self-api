@@ -40,8 +40,8 @@ namespace JetBrains.Profiler.SelfApi
     /// <summary>
     /// The version of JetBrains.dotMemory.Console NuGet-package that must be downloaded.
     /// </summary>
-    public const string NupkgVersion = "2019.3";
-    
+    private static readonly NuGet.SemanticVersion NupkgVersion = new NuGet.SemanticVersion(2019, 3);
+
     /// <summary>
     /// Self-profiling configuration
     /// </summary>

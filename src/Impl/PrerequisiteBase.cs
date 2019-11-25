@@ -12,9 +12,9 @@ namespace JetBrains.Profiler.SelfApi.Impl
     internal abstract class PrerequisiteBase
     {
         public readonly string Name;
-        public readonly string SemanticVersion;
+        public readonly NuGet.SemanticVersion SemanticVersion;
 
-        protected PrerequisiteBase(string name, string semanticVersion)
+        protected PrerequisiteBase(string name, NuGet.SemanticVersion semanticVersion)
         {
             Name = name;
             SemanticVersion = semanticVersion;

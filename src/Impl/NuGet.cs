@@ -5,6 +5,7 @@ using System.Linq;
 using System.Net.Http;
 using System.Runtime.Serialization;
 using System.Runtime.Serialization.Json;
+using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Xml;
@@ -18,6 +19,97 @@ namespace JetBrains.Profiler.SelfApi.Impl
     /// </summary>
     internal static class NuGet
     {
+        /// <summary>
+        /// Simplified support for semantic version.
+        /// </summary>
+        public sealed class SemanticVersion : IComparable<SemanticVersion>
+        {
+            private readonly Version _version;
+            
+            private SemanticVersion(Version version, string prerelease, string build)
+            {
+                _version = version;
+                Prerelease = prerelease;
+                Build = build;
+            }
+
+            public SemanticVersion(int major, int minor)
+            {
+                _version = new Version(major, minor);
+            }
+            
+            public Version Version2 => new Version(_version.Major, _version.Minor);
+
+            public string Prerelease { get; }
+
+            public string Build { get; }
+
+            public int CompareTo(SemanticVersion other)
+            {
+                if (ReferenceEquals(this, other)) return 0;
+                if (ReferenceEquals(null, other)) return 1;
+
+                var cmp = _version.CompareTo(other._version);
+                if (cmp != 0)
+                    return cmp;
+
+                if (string.IsNullOrEmpty(Prerelease))
+                {
+                    return string.IsNullOrEmpty(other.Prerelease)
+                        ? string.Compare(Build, other.Build, StringComparison.Ordinal)
+                        : 1;
+                }
+
+                if (string.IsNullOrEmpty(other.Prerelease))
+                    return -1;
+
+                cmp = string.Compare(Prerelease, other.Prerelease, StringComparison.Ordinal);
+                if (cmp != 0)
+                    return cmp;
+
+                return string.Compare(Build, other.Build, StringComparison.Ordinal);
+            }
+
+            public override string ToString()
+            {
+                var sb = new StringBuilder(32);
+                sb.Append(_version);
+                if (!string.IsNullOrEmpty(Prerelease))
+                    sb.Append('-').Append(Prerelease);
+                if (!string.IsNullOrEmpty(Build))
+                    sb.Append('+').Append(Build);
+                return sb.ToString();
+            }
+
+            public static SemanticVersion TryParse(string value)
+            {
+                if (string.IsNullOrEmpty(value))
+                    return null;
+                
+                var prerelease = (string) null;
+                var build = (string) null;
+                
+                var idx = value.LastIndexOf('+');
+                if (idx >= 0)
+                {
+                    build = value.Substring(idx + 1);
+                    value = value.Substring(0, idx);
+                }
+
+                idx = value.LastIndexOf('-');
+                if (idx >= 0)
+                {
+                    prerelease = value.Substring(idx + 1);
+                    value = value.Substring(0, idx);
+                }
+                
+                if (!Version.TryParse(value, out var version))
+                    return null;
+
+                return new SemanticVersion(version, prerelease, build);
+            }
+        }
+        
         public static Uri GetDefaultUrl(NuGetApi nugetApi)
         {
             switch (nugetApi)
@@ -38,7 +130,7 @@ namespace JetBrains.Profiler.SelfApi.Impl
             Uri nugetUrl,
             NuGetApi nugetApi,
             string packageId,
-            string packageVersion,
+            SemanticVersion packageVersion,
             CancellationToken cancellationToken)
         {
             if (http == null) throw new ArgumentNullException(nameof(http));
@@ -74,15 +166,6 @@ namespace JetBrains.Profiler.SelfApi.Impl
             return new UriBuilder(baseUrl) {Query = query}.Uri;
         }
 
-        public static Version TryToVersion(this string version)
-        {
-            var idx = version.IndexOf('-');
-            if (idx >= 0)
-                version = version.Substring(0, idx);
-
-            return Version.TryParse(version, out var ret) ? ret : null;
-        }
-
         public static class V2
         {
             public static readonly Uri NugetOrgUrl = new Uri("https://www.nuget.org/api/v2");
@@ -91,7 +174,7 @@ namespace JetBrains.Profiler.SelfApi.Impl
                 HttpClient http,
                 Uri nugetUrl,
                 string packageId,
-                string packageVersion,
+                SemanticVersion packageVersion,
                 CancellationToken cancellationToken)
             {
                 var indexUrl = nugetUrl.Combine("FindPackagesById()").Query($"id='{packageId}'");
@@ -128,18 +211,15 @@ namespace JetBrains.Profiler.SelfApi.Impl
                 }
             }
 
-            private static Entry GetLatestEntry(Feed feed, string packageVersion)
+            private static Entry GetLatestEntry(Feed feed, SemanticVersion packageVersion)
             {
-                var basePkgVer = Version.Parse(packageVersion);
                 Entry latest = null;
                 foreach (var entry in feed.Entries)
                 {
-                    if (entry.Version == null ||
-                        entry.Version.Major != basePkgVer.Major ||
-                        entry.Version.Minor != basePkgVer.Minor)
+                    if (entry.Version == null || entry.Version.Version2 != packageVersion.Version2)
                         continue;
 
-                    if (latest == null || latest.Version < entry.Version)
+                    if (latest == null || latest.Version.CompareTo(entry.Version) <= 0)
                         latest = entry;
                 }
                 
@@ -180,11 +260,12 @@ namespace JetBrains.Profiler.SelfApi.Impl
                         node.ValueOf("a:content/@src") 
                         ?? throw new InvalidOperationException("Something went wrong: unable to find content/@src");
 
-                    Version = TryToVersion(node.ValueOf("m:properties/d:Version"));
+                    
+                    Version = SemanticVersion.TryParse(node.ValueOf("m:properties/d:Version"));
                 }
 
                 public string ContentSrc { get; }
-                public Version Version { get; }
+                public SemanticVersion Version { get; }
             }
             
             private sealed class XResponseNode
@@ -226,7 +307,7 @@ namespace JetBrains.Profiler.SelfApi.Impl
                 HttpClient http,
                 Uri indexUrl, 
                 string packageId, 
-                string packageVersion, 
+                SemanticVersion packageVersion, 
                 CancellationToken cancellationToken)
             {
                 packageId = packageId.ToLowerInvariant();
@@ -325,29 +406,28 @@ namespace JetBrains.Profiler.SelfApi.Impl
                 [DataMember(Name = "versions")]
                 public string[] Versions;
 
-                public string GetLatestVersion(string packageVersion)
+                public string GetLatestVersion(SemanticVersion packageVersion)
                 {
-                    var basePkgVer = Version.Parse(packageVersion);
-                    string latestPkgVer = null; // the latest found version including build meta-info
-                    Version latest = null;      // the latest parsed version w/o meta-info 
-                    foreach (var pkgVer in Versions)
+                    string latestOriginal = null; // the latest found version including build meta-info
+                    SemanticVersion latest = null;      // the latest parsed version w/o meta-info 
+                    foreach (var sVer in Versions)
                     {
-                        var ver = TryToVersion(pkgVer);
-                        if (ver == null || ver.Major != basePkgVer.Major || ver.Minor != basePkgVer.Minor)
+                        var ver = SemanticVersion.TryParse(sVer);
+                        if (ver == null || ver.Version2 != packageVersion.Version2)
                             continue;
 
-                        if (latest == null || latest < ver)
+                        if (latest == null || latest.CompareTo(ver) <= 0)
                         {
-                            latestPkgVer = pkgVer;
+                            latestOriginal = sVer;
                             latest = ver;
                         }
                     }
 
-                    if (latestPkgVer == null)
+                    if (latestOriginal == null)
                         throw new InvalidOperationException(
                             $"Something went wrong: unable to find the latest package of v{packageVersion}");
 
-                    return latestPkgVer;
+                    return latestOriginal;
                 }
             }
 #pragma warning restore 649
