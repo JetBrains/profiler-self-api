@@ -7,16 +7,17 @@
     <Company>JetBrains s.r.o.</Company>
     <Copyright>Copyright © 2019 JetBrains s.r.o.</Copyright>
     <Authors>Mikhail Pilin, Ilya Ivanov</Authors>
-    <Description>JetBrains Self-Profiling API lets you initiate and control profiling sessions right from the code of your application. The snapshots taken by the API calls can be later opened and investigated in JetBrains dotMemory. The main advantage of Self-Profiling API is that it doesn't require dotMemory installation. For example, you can use this API to take memory snapshots of your application on end-user desktops, staging and production servers, and so on.</Description>
-    <PackageReleaseNotes>Initial release supports memory profiling only.</PackageReleaseNotes>
+    <Description>JetBrains Self-Profiling API lets you initiate and control profiling sessions right from the code of your application. The snapshots taken by the API calls can be later opened and investigated in JetBrains profiling tools. The main advantage of Self-Profiling API is that it doesn't require the profiling tools to be installed on the end-user machine. For example, you can use this API to take memory snapshots of your application on end-user desktops, staging and production servers, and so on.</Description>
+    <PackageReleaseNotes>• Important: Currently, the API lets you work only with JetBrains dotMemory
+• Supported OSs: Windows Vista SP2 and later
+• Supported frameworks: .NET Framework 4.6 and later, .NET Core 3.0 and later
+• Required framework for the API to work: .NET Frameworks 4.6.1 and later to be installed</PackageReleaseNotes>
     <RepositoryUrl>https://github.com/JetBrains/profiler-self-api</RepositoryUrl>    
     <PackageIconUrl>https://resources.jetbrains.com/storage/products/resharper/img/meta/ReSharper_64.png</PackageIconUrl>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
     <TargetFrameworks>net46;netcoreapp3.0</TargetFrameworks>
-    <PackageVersion>1.0.0-preview4</PackageVersion>
+    <PackageVersion>1.0.0</PackageVersion>
     <PackageLicenseExpression>Apache-2.0</PackageLicenseExpression>
-    <AssemblyVersion>1.0.0</AssemblyVersion>
-    <FileVersion>1.0.0</FileVersion>
   </PropertyGroup>
   <ItemGroup>
     <Compile Remove="_ReSharper.Caches\**" />
