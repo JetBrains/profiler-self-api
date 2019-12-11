@@ -1,9 +1,12 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
+    <TargetFrameworks>net46;netcoreapp3.0</TargetFrameworks>
     <RootNamespace>JetBrains.Profiler.SelfApi</RootNamespace>
     <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
     <SignAssembly>true</SignAssembly>
     <AssemblyOriginatorKeyFile>Subplatform.Snk</AssemblyOriginatorKeyFile>    
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <PackageLicenseExpression>Apache-2.0</PackageLicenseExpression>
     <Company>JetBrains s.r.o.</Company>
     <Copyright>Copyright © 2019 JetBrains s.r.o.</Copyright>
     <Authors>Mikhail Pilin, Ilya Ivanov</Authors>
@@ -14,15 +17,11 @@
 • Required framework for the API to work: .NET Frameworks 4.6.1 and later to be installed</PackageReleaseNotes>
     <RepositoryUrl>https://github.com/JetBrains/profiler-self-api</RepositoryUrl>    
     <PackageIconUrl>https://resources.jetbrains.com/storage/products/resharper/img/meta/ReSharper_64.png</PackageIconUrl>
-    <GenerateDocumentationFile>true</GenerateDocumentationFile>
-    <TargetFrameworks>net46;netcoreapp3.0</TargetFrameworks>
-    <PackageVersion>1.0.0</PackageVersion>
-    <PackageLicenseExpression>Apache-2.0</PackageLicenseExpression>
+    <PackageIcon>icon.png</PackageIcon>
+    <Version>1.0.0</Version>
   </PropertyGroup>
   <ItemGroup>
-    <Compile Remove="_ReSharper.Caches\**" />
-    <EmbeddedResource Remove="_ReSharper.Caches\**" />
-    <None Remove="_ReSharper.Caches\**" />
+    <None Include="icon.png" Pack="true" PackagePath="\" />
   </ItemGroup>
   <ItemGroup>
     <Reference Include="System.IO.Compression" Condition="'$(TargetFramework)' == 'net46'" />
