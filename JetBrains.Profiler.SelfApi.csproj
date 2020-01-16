@@ -20,7 +20,7 @@ ATTENTION: Note that for its work JetBrains Self-Profiling API uses the JetBrain
 • Required framework for the API to work: .NET Frameworks 4.6.1 and later to be installed</PackageReleaseNotes>
     <RepositoryUrl>https://github.com/JetBrains/profiler-self-api</RepositoryUrl>    
     <PackageProjectUrl>https://www.jetbrains.com/help/dotmemory/Profiling_Guidelines__Advanced_Profiling_Using_dotTrace_API.html#self-profiled-applications</PackageProjectUrl>
-    <PackageIconUrl>https://resources.jetbrains.com/storage/products/resharper/img/meta/ProfilerSelfApi_128.png</PackageIconUrl>
+    <PackageIconUrl>https://resources.jetbrains.com/storage/products/resharper/img/icons/ProfilerSelfApi_128.png</PackageIconUrl>
     <PackageIcon>icon.png</PackageIcon>
     <PackageTags>jetbrains profiler profiling memory net dotnet netcore dotnetcore netstandard windows uwp macos mac linux</PackageTags>
     <Version>1.0.3</Version>
