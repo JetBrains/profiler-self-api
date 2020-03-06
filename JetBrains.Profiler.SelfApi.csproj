@@ -24,6 +24,7 @@ ATTENTION: Note that for its work JetBrains Self-Profiling API uses the JetBrain
     <PackageIcon>icon.png</PackageIcon>
     <PackageTags>jetbrains profiler profiling memory net dotnet netcore dotnetcore netstandard windows uwp macos mac linux</PackageTags>
     <Version>1.0.3</Version>
+    <PackageVersion>1.0.4</PackageVersion>
   </PropertyGroup>
   <ItemGroup>
     <None Include="icon.png" Pack="true" PackagePath="\" />
