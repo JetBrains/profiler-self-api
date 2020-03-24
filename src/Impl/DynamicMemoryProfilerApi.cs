@@ -40,7 +40,7 @@ namespace JetBrains.Profiler.SelfApi.Impl
             Assembly assembly;
             try
             {
-                assembly = Assembly.Load("JetBrains.Profiler.Api, Version=1.1.3.0, Culture=neutral, PublicKeyToken=1010a0d8d6380325");
+                assembly = Assembly.Load("JetBrains.Profiler.Api, Version=1.1.6.0, Culture=neutral, PublicKeyToken=1010a0d8d6380325");
             }
             catch (Exception e)
             {
