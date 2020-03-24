@@ -161,7 +161,7 @@ namespace JetBrains.Profiler.SelfApi.Impl
         {
             return Path.Combine(
                 Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-                $"JetBrains/Profiler/SelfApi/{Name}.{SemanticVersion}"
+                "JetBrains", "Profiler", "SelfApi", $"{Name}.{SemanticVersion}"
             );
         }
         
