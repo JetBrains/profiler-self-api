@@ -436,50 +436,18 @@ namespace JetBrains.Profiler.SelfApi
       
       protected override string GetRunnerName()
       {
-        if (Environment.OSVersion.Platform != PlatformID.Win32NT)
-          throw new NotSupportedException("Platforms other than Windows not yet supported.");
-
-        return "dotMemory.exe";
-
-        // The code below is for future use: specific runner name for OS and bitness
-        /*string osSuffix, ext;
-
-        switch (Environment.OSVersion.Platform)
+        switch (Helper.Platform)
         {
-          case PlatformID.Win32NT:
-            osSuffix = "Win";
-            ext = "exe";
-            break;
-
-          default:
-            throw new NotSupportedException();
+        case PlatformId.Linux:
+        case PlatformId.MacOsX: return "dotMemory.sh";
+        case PlatformId.Windows: return "dotMemory.exe";
+        default: throw new ArgumentOutOfRangeException();
         }
-
-        var bitnessSuffix = Environment.Is64BitProcess ? "x64" : "x86";
-
-        return $"dotMemory.{osSuffix}.{bitnessSuffix}.{ext}";*/
       }
 
       protected override string GetPackageName()
       {
         return "JetBrains.dotMemory.Console";
-        
-        // The code below is for future use: specific package name for OS and bitness - for prerequisite size optimization
-        /*string osSuffix;
-
-        switch (Environment.OSVersion.Platform)
-        {
-          case PlatformID.Win32NT:
-            osSuffix = "Win";
-            break;
-
-          default:
-            throw new NotSupportedException();
-        }
-
-        var bitnessSuffix = Environment.Is64BitProcess ? "x64" : "x86";
-
-        return $"JetBrains.dotMemory.{osSuffix}.{bitnessSuffix}";*/
       }
 
       protected override long GetEstimatedSize()
