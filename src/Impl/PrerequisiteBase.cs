@@ -90,6 +90,8 @@ namespace JetBrains.Profiler.SelfApi.Impl
                         var subStep = entry.Length * unzipWeigth / totalLength;
                         var dstPath = Path.Combine(downloadTo, entry.FullName.Substring(toolsPrefix.Length));
 
+                        Directory.CreateDirectory(Path.GetDirectoryName(dstPath));
+
                         using (var input = entry.Open())
                         using (var output = File.Create(dstPath))
                         {
