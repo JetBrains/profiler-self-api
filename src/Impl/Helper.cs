@@ -9,7 +9,7 @@ namespace JetBrains.Profiler.SelfApi.Impl
     private static readonly Lazy<ArchitectureId> ourOsArchitecture = new Lazy<ArchitectureId>(DeduceOsArchitecture);
 
     public static PlatformId Platform => ourPlatform.Value;
-    public static ArchitectureId OsArchitectureId => ourOsArchitecture.Value;
+    public static ArchitectureId OsArchitecture => ourOsArchitecture.Value;
 
     private static PlatformId DeducePlatformId()
     {
@@ -18,7 +18,7 @@ namespace JetBrains.Profiler.SelfApi.Impl
 #elif NET20 || NET35 || NET40 || NET45 || NET451 || NET452 || NET46 || NET461 || NET462 || NET47
       switch (Environment.OSVersion.Platform)
       {
-      case PlatformID.Unix: return ourUnixConfig.Value.PlatformId;
+      case PlatformID.Unix: return ourUnixConfig.Value.Item1;
       case PlatformID.Win32NT: return PlatformId.Windows;
       }
 #else
@@ -36,7 +36,7 @@ namespace JetBrains.Profiler.SelfApi.Impl
 #elif NET20 || NET35 || NET40 || NET45 || NET451 || NET452 || NET46 || NET461 || NET462 || NET47
       switch (Environment.OSVersion.Platform)
       {
-      case PlatformID.Unix: return ourUnixConfig.Value.ArchitectureId;
+      case PlatformID.Unix: return ourUnixConfig.Value.Item2;
       case PlatformID.Win32NT: return Environment.Is64BitOperatingSystem ? ArchitectureId.X64 : ArchitectureId.X86;
       default:
         throw new PlatformNotSupportedException();

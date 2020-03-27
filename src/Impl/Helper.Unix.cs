@@ -6,7 +6,7 @@ namespace JetBrains.Profiler.SelfApi.Impl
 {
   internal static partial class Helper
   {
-    private static readonly Lazy<UnixConfig> ourUnixConfig = new Lazy<UnixConfig>(DeduceUnixConfig);
+    private static readonly Lazy<Tuple<PlatformId, ArchitectureId>> ourUnixConfig = new Lazy<Tuple<PlatformId, ArchitectureId>>(DeduceUnixConfig);
 
     private static PlatformId ToPlatformId(string sysname)
     {
@@ -28,7 +28,7 @@ namespace JetBrains.Profiler.SelfApi.Impl
       }
     }
 
-    private static ArchitectureId ToArchitecture(this string machine)
+    private static ArchitectureId ToArchitecture(string machine)
     {
       switch (machine)
       {
@@ -38,7 +38,7 @@ namespace JetBrains.Profiler.SelfApi.Impl
       }
     }
 
-    private static UnixConfig DeduceUnixConfig()
+    private static Tuple<PlatformId, ArchitectureId> DeduceUnixConfig()
     {
       var buf = IntPtr.Zero;
       try
@@ -58,14 +58,10 @@ namespace JetBrains.Profiler.SelfApi.Impl
         if (rc != 0)
           throw new Exception("uname() from libc returned " + rc);
 
-        var platformId = ToPlatformId(Marshal.PtrToStringAnsi(buf));
-        var nameLen = platformId.ToNameLen();
+        var platform = ToPlatformId(Marshal.PtrToStringAnsi(buf));
+        var nameLen = platform.ToNameLen();
         const int machineIndex = 4;
-        return new UnixConfig
-          {
-            PlatformId = platformId,
-            ArchitectureId = ToArchitecture(Marshal.PtrToStringAnsi(buf + machineIndex * nameLen))
-          };
+        return Tuple.Create(platform, ToArchitecture(Marshal.PtrToStringAnsi(buf + machineIndex * nameLen)));
       }
       finally
       {
@@ -73,15 +69,5 @@ namespace JetBrains.Profiler.SelfApi.Impl
           Marshal.FreeHGlobal(buf);
       }
     }
-
-    #region Nested type: UnixConfig
-
-    private struct UnixConfig
-    {
-      public PlatformId PlatformId;
-      public ArchitectureId ArchitectureId;
-    }
-
-    #endregion
   }
 }
