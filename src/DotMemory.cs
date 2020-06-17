@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.IO;
-using System.Reflection;
 using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading;
@@ -166,10 +165,8 @@ namespace JetBrains.Profiler.SelfApi
     }
     
     private const int Timeout = 30000;
-    private static readonly Prerequisite OurPrerequisite = new Prerequisite();
+    private static readonly ConsoleToolRunner OurConsoleToolRunner = new ConsoleToolRunner(new Prerequisite());
     private static readonly object OurMutex = new object();
-    private static Task _prerequisiteTask;
-    private static string _prerequisitePath;
     private static Session _session;
 
     /// <summary>
@@ -195,29 +192,7 @@ namespace JetBrains.Profiler.SelfApi
       string downloadTo = null)
     {
       lock (OurMutex)
-      {
-        if (_prerequisiteTask != null && !_prerequisiteTask.IsCompleted)
-        {
-          Trace.Verbose("DotMemory.EnsurePrerequisite: Task already running.");
-          return _prerequisiteTask;
-        }
-
-        _prerequisiteTask = null;
-        _prerequisitePath = downloadTo;
-
-        if (OurPrerequisite.TryGetRunner(downloadTo, out _))
-        {
-          Trace.Verbose("DotMemory.EnsurePrerequisite: Runner found, no async task needed.");
-          return _prerequisiteTask = Task.FromResult(Missing.Value);
-        }
-        
-        if (nugetUrl == null)
-          nugetUrl = NuGet.GetDefaultUrl(nugetApi);
-        
-        Trace.Verbose("DotMemory.EnsurePrerequisite: Runner not found, starting download...");
-        return _prerequisiteTask = OurPrerequisite
-          .DownloadAsync(nugetUrl, nugetApi, downloadTo, progress, cancellationToken);
-      }
+        return OurConsoleToolRunner.EnsurePrerequisiteAsync(cancellationToken, progress, nugetUrl, nugetApi, downloadTo);
     }
 
     /// <summary>
@@ -262,8 +237,7 @@ namespace JetBrains.Profiler.SelfApi
 
       lock (OurMutex)
       {
-        if (_prerequisiteTask == null || !_prerequisiteTask.Wait(40))
-          throw new InvalidOperationException("The prerequisite isn't ready: forgot to call EnsurePrerequisiteAsync()?");
+        OurConsoleToolRunner.AssertIfReady();
         
         if (_session != null)
           throw new InvalidOperationException("The profiling session is active already: Attach() was called early.");
@@ -292,9 +266,8 @@ namespace JetBrains.Profiler.SelfApi
 
       lock (OurMutex)
       {
-        if (_prerequisiteTask == null || !_prerequisiteTask.Wait(40))
-          throw new InvalidOperationException("The prerequisite isn't ready: forgot to call EnsurePrerequisiteAsync()?");
-        
+        OurConsoleToolRunner.AssertIfReady();
+
         if (_session != null)
           throw new InvalidOperationException("The profiling session is active still: forgot to call Detach()?");
 
@@ -354,8 +327,8 @@ namespace JetBrains.Profiler.SelfApi
     private static Session RunConsole(string command, Config config)
     {
       Trace.Verbose("DotMemory.RunConsole: Looking for runner...");
-      if (!OurPrerequisite.TryGetRunner(_prerequisitePath, out var runnerPath))
-        throw new InvalidOperationException("Something went wrong: the dotMemory console profiler not found.");
+
+      var runnerPath = OurConsoleToolRunner.GetRunner();
       
       var workspaceFile = GetSaveToFilePath(config);
       
