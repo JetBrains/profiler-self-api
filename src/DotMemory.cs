@@ -1,10 +1,8 @@
 using System;
-using System.Collections.Generic;
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.IO;
 using System.Text;
-using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
 using JetBrains.Profiler.SelfApi.Impl;
@@ -36,6 +34,9 @@ namespace JetBrains.Profiler.SelfApi
   [SuppressMessage("ReSharper", "UnusedMember.Global")]
   public static class DotMemory
   {
+    private const string MessageServicePrefix = "##dotMemory";
+    private const string CltPresentableName = "dotMemory console profiler"; 
+
     /// <summary>
     /// The version of JetBrains.dotMemory.Console NuGet-package that must be downloaded.
     /// </summary>
@@ -44,44 +45,15 @@ namespace JetBrains.Profiler.SelfApi
     /// <summary>
     /// Self-profiling configuration
     /// </summary>
-    public sealed class Config
+    public sealed class Config : CommonConfig
     {
       internal string LogLevel;
-      internal string LogFile;
       internal string WorkspaceFile;
       internal string WorkspaceDir;
       internal bool IsOpenDotMemory;
       internal bool IsOverwriteWorkspace;
-      internal bool? IsUseApi;
       internal string OtherArguments;
 
-      /// <summary>
-      /// Sets the TRACE logging level.
-      /// </summary>
-      public Config UseLogLevelTrace()
-      {
-        LogLevel = "Trace";
-        return this;
-      }
-      
-      /// <summary>
-      /// Sets the VERBOSE logging level.
-      /// </summary>
-      public Config UseLogLevelVerbose()
-      {
-        LogLevel = "Verbose";
-        return this;
-      }
-      
-      /// <summary>
-      /// Specifies the path to the log file.
-      /// </summary>
-      public Config UseLogFile(string filePath)
-      {
-        LogFile = filePath ?? throw new ArgumentNullException(nameof(filePath));
-        return this;
-      }
-      
       /// <summary>
       /// Specifies the path to the workspace file (snapshots storage).
       /// </summary>
@@ -115,11 +87,29 @@ namespace JetBrains.Profiler.SelfApi
         IsOpenDotMemory = true;
         return this;
       }
+
+      /// <summary>
+      /// Sets the TRACE logging level.
+      /// </summary>
+      public Config UseLogLevelTrace<T>()
+      {
+        LogLevel = "Trace";
+        return this;
+      }
       
+      /// <summary>
+      /// Sets the VERBOSE logging level.
+      /// </summary>
+      public Config UseLogLevelVerbose()
+      {
+        LogLevel = "Verbose";
+        return this;
+      }
+
       /// <summary>
       /// Appends an arbitrary argument to the command line as is (without any quoting, and so on).
       /// </summary>
-      public Config WithCommandLineArgument(string argument)
+      public Config WithCommandLineArgument<T>(string argument)
       {
         if (argument == null) throw new ArgumentNullException(nameof(argument));
         
@@ -128,38 +118,6 @@ namespace JetBrains.Profiler.SelfApi
         else
           OtherArguments = argument;
         
-        return this;
-      }
-      
-      /// <summary>
-      /// [Advanced use only] Specifies whether to use `JetBrains.Profiler.Api` to control the profiling session.
-      /// </summary>
-      /// <remarks>
-      /// By default, `JetBrains.Profiler.Api` is used to control the session (if the corresponding assembly was successfully loaded).
-      /// Otherwise, the self-profiling API uses dotMemory.exe service messages to control the session.
-      /// </remarks>
-      public Config UseApi()
-      {
-        if (IsUseApi.HasValue)
-          throw new InvalidOperationException("The UseApi and DoNotUseApi are mutually exclusive.");
-        
-        IsUseApi = true;
-        return this;
-      }
-      
-      /// <summary>
-      /// [Advanced use only] Prohibits using `JetBrains.Profiler.Api` to control the profiling session.
-      /// </summary>
-      /// <remarks>
-      /// By default, `JetBrains.Profiler.Api` is used to control the session (if the corresponding assembly was successfully loaded).
-      /// Otherwise, the self-profiling API uses dotMemory.exe service messages to control the session.
-      /// </remarks>
-      public Config DoNotUseApi()
-      {
-        if (IsUseApi.HasValue)
-          throw new InvalidOperationException("The DoNotUseApi and UseApi are mutually exclusive.");
-        
-        IsUseApi = false;
         return this;
       }
     }
@@ -380,25 +338,11 @@ namespace JetBrains.Profiler.SelfApi
 
       Trace.Info("DotMemory.RunConsole:\n  runner = `{0}`\n  arguments = `{1}`", runnerPath, commandLine);
     
-      var console = Process.Start(
-        new ProcessStartInfo
-        {
-          FileName = runnerPath,
-          Arguments = commandLine.ToString(),
-          CreateNoWindow = true,
-          UseShellExecute = false,
-          RedirectStandardInput = true,
-          RedirectStandardOutput = true,
-          RedirectStandardError = true
-        }
-      );
-    
-      if (console == null)
-        throw new InvalidOperationException("Something went wrong: unable to start dotMemory console profiler.");
+      var consoleProfiler = new ConsoleProfiler(runnerPath, commandLine.ToString(), MessageServicePrefix, CltPresentableName, api != null ? (Func<bool>)api.IsReady : null);
       
       Trace.Verbose("DotMemory.RunConsole: Runner started.");
 
-      return new Session(console, api, workspaceFile);
+      return new Session(consoleProfiler, api, workspaceFile);
     }
 
     private sealed class Prerequisite : PrerequisiteBase
@@ -428,50 +372,15 @@ namespace JetBrains.Profiler.SelfApi
         return 20 * 1024 * 1024;
       }
     }
-
     private sealed class Session
     {
-      [SuppressMessage("ReSharper", "InconsistentNaming")]
-      private const string __dotMemory = "##dotMemory";
-      
-      private readonly List<string> _outputLines = new List<string>();
-      private readonly List<string> _errorLines = new List<string>();
-      private readonly Process _console;
       private readonly DynamicMemoryProfilerApi _profilerApi;
+      private readonly ConsoleProfiler _consoleProfiler;
 
-      public Session(Process console, DynamicMemoryProfilerApi profilerApi, string workspaceFile)
+      public Session(ConsoleProfiler consoleProfiler, DynamicMemoryProfilerApi profilerApi, string workspaceFile)
       {
-        _console = console;
+        _consoleProfiler = consoleProfiler;
         _profilerApi = profilerApi;
-        
-        console.OutputDataReceived +=
-          (sender, args) =>
-            {
-              if (args.Data != null)
-              {
-                lock (_outputLines)
-                {
-                  _outputLines.Add(args.Data);
-                  Trace.Verbose(args.Data);
-                }
-              }
-            };
-
-        console.ErrorDataReceived +=
-          (sender, args) =>
-            {
-              if (args.Data != null)
-              {
-                lock (_errorLines)
-                {
-                  _errorLines.Add(args.Data);
-                  Trace.Verbose(args.Data);
-                }
-              }
-            };
-
-        console.BeginOutputReadLine();
-        console.BeginErrorReadLine();
         
         WorkspaceFile = workspaceFile;
       }
@@ -484,7 +393,7 @@ namespace JetBrains.Profiler.SelfApi
         if (_profilerApi != null)
           _profilerApi.Detach();
         else
-          Send("disconnect");
+          _consoleProfiler.Send("disconnect");
         return this;
       }
       
@@ -495,126 +404,22 @@ namespace JetBrains.Profiler.SelfApi
           _profilerApi.GetSnapshot(name);
         else
         {
-          Send("get-snapshot", "name", name);
-          AwaitSnapshotSaved();
+          _consoleProfiler.Send("get-snapshot", "name", name);
+          _consoleProfiler.AwaitResponse("snapshot-saved", -1);
         }
         return this;
       }
       
       public Session AwaitConnected(int milliseconds)
       {
-        var regex = new Regex(__dotMemory + @"\[\x22connected\x22,\s*\{.*\}\]", RegexOptions.Compiled | RegexOptions.IgnoreCase);
-        if (TryAwaitFor(regex, milliseconds) == null)
-          throw ConsoleException("The dotMemory console profiler was not connected. See details below.");
-        
-        if (_profilerApi != null)
-        {
-          var startTime = DateTime.UtcNow;
-          while ((_profilerApi.GetFeatures() & 0x1) != 0x1)
-          {
-            if (_console.HasExited)
-              throw ConsoleException("The dotMemory console profiler has exited unexpectedly. See details below.");
-
-            if (milliseconds >= 0 && (DateTime.UtcNow - startTime).TotalMilliseconds > milliseconds)
-              throw ConsoleException("The Profiler.Api was not became ready in given time. See details below.");
-
-            Thread.Sleep(40);
-          }
-        }
-
-        return this;
-      }
-      
-      private Session AwaitSnapshotSaved()
-      {
-        var regex = new Regex(__dotMemory + @"\[\x22snapshot-saved\x22,\s*\{.*\}\]", RegexOptions.Compiled | RegexOptions.IgnoreCase);
-        TryAwaitFor(regex, -1);
+        _consoleProfiler.AwaitConnected(milliseconds);
         return this;
       }
       
       public Session AwaitFinished(int milliseconds)
       {
-        if (!_console.WaitForExit(milliseconds))
-          throw ConsoleException("The dotMemory console profiler has not finished in given time. See details below.");
-
-        if (_console.ExitCode != 0)
-          throw ConsoleException("The dotMemory console profiler has failed. See details below.");
-
+        _consoleProfiler.AwaitFinished(milliseconds);
         return this;
-      }
-      
-      private Match TryAwaitFor(Regex regex, int milliseconds)
-      {
-        var startTime = DateTime.UtcNow;
-        var lineNum = 0;
-        while (true)
-        {
-          lock (_outputLines)
-          {
-            while (lineNum < _outputLines.Count)
-            {
-              var line = _outputLines[lineNum++];
-              var match = regex.Match(line);
-              if (match.Success)
-                return match;
-            }
-          }
-
-          if (_console.HasExited)
-            return null;
-
-          if (milliseconds >= 0 && (DateTime.UtcNow - startTime).TotalMilliseconds > milliseconds)
-            return null;
-          
-          Thread.Sleep(40);
-        }
-      }
-      
-      private void Send(string command, params string[] args)
-      {
-        var messageBuilder = new StringBuilder();
-        messageBuilder.Append(__dotMemory).Append("[\"").Append(command).Append("\"");
-
-        if (args != null && args.Length > 0)
-        {
-          messageBuilder.Append(",{");
-          for (var i = 0; i < args.Length; i += 2)
-          {
-            messageBuilder.Append(args[i]).Append(":");
-            
-            if (args[i + 1] != null)
-              messageBuilder.Append("\"").Append(args[i + 1].Replace('"', '`')).Append("\"");
-            else
-              messageBuilder.Append("null");
-            
-            if (i > 0)
-              messageBuilder.Append(",");
-          }
-          messageBuilder.Append("}");
-        }
-        
-        messageBuilder.Append("]");
-
-        var message = messageBuilder.ToString();
-        Trace.Verbose(message);
-        _console.StandardInput.WriteLine(message);
-      }
-
-      private InvalidOperationException ConsoleException(string caption)
-      {
-        var message = new StringBuilder();
-        message.AppendLine(caption);
-        
-        message.AppendLine("*** Standard Error ***");
-        lock (_errorLines)
-          message.AppendLine(string.Join(Environment.NewLine, _errorLines));
-
-        message.AppendLine();
-        message.AppendLine("*** Standard Output ***");
-        lock (_outputLines)
-          message.AppendLine(string.Join(Environment.NewLine, _outputLines));
-        
-        throw new InvalidOperationException(message.ToString());
       }
     }
   }

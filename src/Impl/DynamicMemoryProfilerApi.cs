@@ -1,10 +1,20 @@
+using System;
+
 namespace JetBrains.Profiler.SelfApi.Impl
 {
     internal sealed class DynamicMemoryProfilerApi
     {
+        [Flags]
+        private enum MemoryFeatures : uint
+        {
+            Ready = 0x1,
+            Detach = 0x2,
+            CollectAllocations = 0x4
+        }
+
         private delegate void GetSnapshotDelegate(string name);
         private delegate void DetachDelegate();
-        private delegate uint GetFeaturesDelegate();
+        private delegate MemoryFeatures GetFeaturesDelegate();
         
         private readonly GetSnapshotDelegate _getSnapshot;
         private readonly DetachDelegate _detach;
@@ -15,11 +25,6 @@ namespace JetBrains.Profiler.SelfApi.Impl
             _getSnapshot = snapshot;
             _detach = detach;
             _getFeatures = getFeatures;
-        }
-
-        public uint GetFeatures()
-        {
-            return _getFeatures();
         }
 
         public void GetSnapshot(string name)
@@ -50,5 +55,7 @@ namespace JetBrains.Profiler.SelfApi.Impl
             
             return new DynamicMemoryProfilerApi(getSnapshot, detach, getFeatures);
         }
+
+        public bool IsReady() => (_getFeatures() & MemoryFeatures.Ready) == MemoryFeatures.Ready;
     }
 }
