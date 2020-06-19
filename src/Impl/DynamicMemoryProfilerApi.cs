@@ -1,6 +1,3 @@
-using System;
-using System.Reflection;
-
 namespace JetBrains.Profiler.SelfApi.Impl
 {
     internal sealed class DynamicMemoryProfilerApi
@@ -37,50 +34,21 @@ namespace JetBrains.Profiler.SelfApi.Impl
         
         public static DynamicMemoryProfilerApi TryCreate()
         {
-            Assembly assembly;
-            try
-            {
-                assembly = Assembly.Load("JetBrains.Profiler.Api, Version=1.1.6.0, Culture=neutral, PublicKeyToken=1010a0d8d6380325");
-            }
-            catch (Exception e)
-            {
-                Trace.Info("Unable to load `JetBrains.Profiler.Api` assembly: {0}", e.Message);
-                return null;
-            }
+            var profiler = DynamicProfiler.TryCreate("JetBrains.Profiler.Api.MemoryProfiler");
 
-            var profiler = assembly.GetType("JetBrains.Profiler.Api.MemoryProfiler");
-            if (profiler == null)
-            {
-                Trace.Error("Something went wrong: the `MemoryProfiler` type not found.");
-                return null;
-            }
-            
-            var getSnapshot = TryGetMethod<GetSnapshotDelegate>(profiler, "GetSnapshot", typeof(string));
+            var getSnapshot = profiler?.TryGetMethod<GetSnapshotDelegate>("GetSnapshot", typeof(string));
             if (getSnapshot == null)
                 return null;
             
-            var detach = TryGetMethod<DetachDelegate>(profiler, "Detach");
+            var detach = profiler.TryGetMethod<DetachDelegate>("Detach");
             if (detach == null)
                 return null;
             
-            var getFeatures = TryGetMethod<GetFeaturesDelegate>(profiler, "GetFeatures");
+            var getFeatures = profiler.TryGetMethod<GetFeaturesDelegate>("GetFeatures");
             if (getFeatures == null)
                 return null;
             
             return new DynamicMemoryProfilerApi(getSnapshot, detach, getFeatures);
-        }
-
-        private static T TryGetMethod<T>(Type profiler, string name, params Type[] typeOfParams) 
-            where T : Delegate
-        {
-            var method = profiler.GetMethod(name, typeOfParams);
-            if (method == null)
-            {
-                Trace.Error($"Something went wrong: the `{name}` method not found.");
-                return null;
-            }
-
-            return (T) method.CreateDelegate(typeof(T));
         }
     }
 }
