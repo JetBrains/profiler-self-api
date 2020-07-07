@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Text;
@@ -7,6 +7,11 @@ using System.Threading;
 
 namespace JetBrains.Profiler.SelfApi.Impl
 {
+    internal interface IResponseCommandProcessor
+    {
+        void ProcessCommand(string command, string args);
+    }
+
     internal class ConsoleProfiler
     {
         private readonly Process _process;
@@ -15,12 +20,17 @@ namespace JetBrains.Profiler.SelfApi.Impl
         private readonly List<string> _outputLines = new List<string>();
         private readonly List<string> _errorLines = new List<string>();
         private readonly Func<bool> _isReady;
+        private readonly IResponseCommandProcessor _commandProcessor;
+        private readonly Regex _commandRegex;
+        private int _firstOutputLineToProcess;
 
-        public ConsoleProfiler(string executable, string arguments, string messageServicePrefix, string presentableName, Func<bool> isReady = null)
+        public ConsoleProfiler(string executable, string arguments, string messageServicePrefix, string presentableName, Func<bool> isReady, IResponseCommandProcessor commandProcessor = null)
         {
             _prefix = messageServicePrefix;
             _presentableName = presentableName;
             _isReady = isReady;
+            _commandProcessor = commandProcessor;
+            _commandRegex = BuildCommandRegex("([a-zA-Z-]*)", "(.*)");
 
             var si = new ProcessStartInfo
             {
@@ -39,11 +49,18 @@ namespace JetBrains.Profiler.SelfApi.Impl
                 {
                     if (args.Data != null)
                     {
-                        lock (_outputLines)
+                        Trace.Verbose(args.Data);
+                        if (_commandProcessor != null)
                         {
-                            _outputLines.Add(args.Data);
-                            Trace.Verbose(args.Data);
+                            var match = _commandRegex.Match(args.Data);
+                            if (match.Success)
+                            {
+                                _commandProcessor.ProcessCommand(match.Groups[1].Value.ToLower(), match.Groups[2].Value);
+                            }
                         }
+
+                        lock (_outputLines)
+                            _outputLines.Add(args.Data);
                     }
                 };
 
@@ -61,7 +78,7 @@ namespace JetBrains.Profiler.SelfApi.Impl
                 };
 
             if(!_process.Start())
-                throw new InvalidOperationException($"Something went wrong: unable to start {_presentableName}.");
+                throw new InvalidOperationException($"Unable to start {_presentableName}: Something went wrong");
 
             _process.BeginOutputReadLine();
             _process.BeginErrorReadLine();
@@ -70,7 +87,7 @@ namespace JetBrains.Profiler.SelfApi.Impl
         private Match WaitFor(Regex regex, int milliseconds)
         {
             var startTime = DateTime.UtcNow;
-            var lineNum = 0;
+            var lineNum = _firstOutputLineToProcess;
             while (true)
             {
                 lock (_outputLines)
@@ -80,7 +97,10 @@ namespace JetBrains.Profiler.SelfApi.Impl
                         var line = _outputLines[lineNum++];
                         var match = regex.Match(line);
                         if (match.Success)
+                        {
+                            _firstOutputLineToProcess = lineNum;
                             return match;
+                        }
                     }
                 }
 
@@ -93,10 +113,15 @@ namespace JetBrains.Profiler.SelfApi.Impl
                 Thread.Sleep(40);
             }
         }
-        
+
+        private Regex BuildCommandRegex(string command, string argument)
+        {
+            return new Regex($@"{_prefix}\[\x22{command}\x22,\s*\{{{argument}\}}\]", RegexOptions.Compiled | RegexOptions.IgnoreCase);
+        }
+
         public bool AwaitResponse(string command, int milliseconds)
         {
-            var regex = new Regex($@"{_prefix}\[\x22{command}\x22,\s*\{{.*\}}\]", RegexOptions.Compiled | RegexOptions.IgnoreCase);
+            var regex = BuildCommandRegex(command, ".*");
             return WaitFor(regex, milliseconds) != null;
         }
 
@@ -150,16 +175,16 @@ namespace JetBrains.Profiler.SelfApi.Impl
         public void AwaitFinished(int milliseconds)
         {
             if (!_process.WaitForExit(milliseconds))
-                throw BuildException($"The {_presentableName} has not finished in given time. See details below.");
+                throw BuildException($"{_presentableName} has not finished in the given time. See details below.");
 
             if (_process.ExitCode != 0)
-                throw BuildException($"The {_presentableName} has failed. See details below.");
+                throw BuildException($"{_presentableName} has failed. See details below.");
         }
 
         public void AwaitConnected(int milliseconds)
         {
             if(!AwaitResponse("connected", milliseconds))
-                throw BuildException($"The {_presentableName} was not connected. See details below.");
+                throw BuildException($"{_presentableName} was not connected. See details below.");
         
             if (_isReady != null)
             {
@@ -167,15 +192,14 @@ namespace JetBrains.Profiler.SelfApi.Impl
                 while (!_isReady())
                 {
                     if (_process.HasExited)
-                        throw BuildException($"The {_presentableName} has exited unexpectedly. See details below.");
+                        throw BuildException($"{_presentableName} has exited unexpectedly. See details below.");
 
                     if (milliseconds >= 0 && (DateTime.UtcNow - startTime).TotalMilliseconds > milliseconds)
-                        throw BuildException("The Profiler.Api was not became ready in given time. See details below.");
+                        throw BuildException("Profiler.Api was not ready in given time. See details below.");
 
                     Thread.Sleep(40);
                 }
             }
-
         }
     }
 }
