@@ -442,7 +442,6 @@ namespace JetBrains.Profiler.SelfApi
             private readonly DynamicPerformanceProfilerApi _profilerApi;
             private readonly CollectedSnapshots _snapshots;
             private readonly ConsoleProfiler _consoleProfiler;
-            private bool _isDataCollecting;
 
             public Session(ConsoleProfiler consoleProfiler, DynamicPerformanceProfilerApi profilerApi, CollectedSnapshots snapshots)
             {
@@ -469,11 +468,7 @@ namespace JetBrains.Profiler.SelfApi
                 else
                 {
                     _consoleProfiler.Send("get-snapshot");
-                    if (_isDataCollecting)
-                    {
-                        _consoleProfiler.AwaitResponse("snapshot-saved", -1);
-                        _isDataCollecting = false;
-                    }
+                    _consoleProfiler.AwaitResponse("(?:snapshot-saved|get-snapshot-error)", -1);
                 }
                 return this;
             }
@@ -486,11 +481,7 @@ namespace JetBrains.Profiler.SelfApi
                 else
                 {
                     _consoleProfiler.Send("drop");
-                    if (_isDataCollecting)
-                    {
-                        _consoleProfiler.AwaitResponse("stopped", 5000);
-                        _isDataCollecting = false;
-                    }
+                    _consoleProfiler.AwaitResponse("(?:stopped|drop-error)", 5000);
                 }
 
                 return this;
@@ -504,11 +495,7 @@ namespace JetBrains.Profiler.SelfApi
                 else
                 {
                     _consoleProfiler.Send("start");
-                    if (!_isDataCollecting)
-                    {
-                        _consoleProfiler.AwaitResponse("started", 5000);
-                        _isDataCollecting = true;
-                    }
+                    _consoleProfiler.AwaitResponse("(?:started|start-error)", 5000);
                 }
 
                 return this;
