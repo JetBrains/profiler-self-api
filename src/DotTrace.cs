@@ -37,7 +37,7 @@ namespace JetBrains.Profiler.SelfApi
         /// <summary>
         /// The version of JetBrains.dotTrace.Console NuGet-package that must be downloaded.
         /// </summary>
-        private static readonly NuGet.SemanticVersion NupkgVersion = new NuGet.SemanticVersion(2020, 1);
+        private static readonly NuGet.SemanticVersion NupkgVersion = new NuGet.SemanticVersion(2020, 2);
         
         /// <summary>
         /// Self-profiling configuration
@@ -51,7 +51,7 @@ namespace JetBrains.Profiler.SelfApi
             /// <summary>
             /// Specifies the path to the snapshot index file.
             /// If you take more than one snapshot, the first snapshot will get the specified file name.
-            /// Others will additionaly get the suffix "-[snapshot-number]". 
+            /// Others will additionally get the suffix "-[snapshot-number]". 
             /// The directory specified in the path must already exist.
             /// <param name="snapshotFile">Path to the file</param>
             /// <param name="overwrite">Overwrite the file if it exists</param>
