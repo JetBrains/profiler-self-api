@@ -146,14 +146,25 @@ namespace JetBrains.Profiler.SelfApi
         }
 
         /// <summary>
+        /// Attaches dotTrace to the current process using the default API configuration.
+        /// Note: After attaching, the profiler goes to "Stopped" state. To start collecting data,
+        /// call <see cref="StartCollectingData"/>
+        /// </summary>
+        public static void Attach()
+        {
+            Attach(new Config());
+        }
+
+        /// <summary>
         /// Attaches dotTrace to the current process using the specified API configuration.
-        /// Default configuration will be used if <paramref name="config"/> == null
         /// Note: After attaching, the profiler goes to "Stopped" state. To start collecting data,
         /// call <see cref="StartCollectingData"/>
         /// <param name="config">Profiler configuration</param>
         /// </summary>
-        public static void Attach(Config config = null)
+        public static void Attach(Config config)
         {
+            if (config == null) throw new ArgumentNullException(nameof(config));
+
             lock (OurMutex)
             {
                 OurConsoleToolRunner.AssertIfReady();
@@ -162,7 +173,7 @@ namespace JetBrains.Profiler.SelfApi
                     throw new InvalidOperationException("The profiling session is not active: Did you call Attach()?");
 
                 _collectedSnapshots = null;
-                _session = RunProfiler(config ?? new Config()).AwaitConnected(Timeout);
+                _session = RunProfiler(config).AwaitConnected(Timeout);
             }
         }
 
@@ -202,7 +213,7 @@ namespace JetBrains.Profiler.SelfApi
                 if (_session == null)
                     throw new InvalidOperationException("The profiling session is not active: Did you call Attach()?");
 
-                _session.Start();
+                _session.StartCollectingData();
             }
         }
 
@@ -219,7 +230,7 @@ namespace JetBrains.Profiler.SelfApi
                 if (_session == null)
                     throw new InvalidOperationException("The profiling session is not active: Did you call Attach()?");
 
-                _session.GetSnapshot();
+                _session.SaveData();
             }
         }
 
@@ -236,7 +247,7 @@ namespace JetBrains.Profiler.SelfApi
                 if (_session == null)
                     throw new InvalidOperationException("The profiling session is not active: Did you call Attach()?");
 
-                _session.DropSnapshot();
+                _session.DropData();
             }
         }
 
@@ -256,7 +267,7 @@ namespace JetBrains.Profiler.SelfApi
                 if (_session == null)
                     throw new InvalidOperationException("The profiling session is not active: Did you call Attach()?");
 
-                _session.Stop();
+                _session.StopCollectingData();
             }
         }
 
@@ -425,6 +436,7 @@ namespace JetBrains.Profiler.SelfApi
                 return 30 * 1024 * 1024;
             }
         }
+        
         private sealed class Session
         {
             private readonly DynamicPerformanceProfilerApi _profilerApi;
@@ -450,7 +462,7 @@ namespace JetBrains.Profiler.SelfApi
             }
       
             [SuppressMessage("ReSharper", "MemberHidesStaticFromOuterClass")]
-            public Session GetSnapshot()
+            public Session SaveData()
             {
                 if (_profilerApi != null)
                     _profilerApi.SaveData();
@@ -467,7 +479,7 @@ namespace JetBrains.Profiler.SelfApi
             }
 
             [SuppressMessage("ReSharper", "MemberHidesStaticFromOuterClass")]
-            public Session DropSnapshot()
+            public Session DropData()
             {
                 if (_profilerApi != null)
                     _profilerApi.DropData();
@@ -485,7 +497,7 @@ namespace JetBrains.Profiler.SelfApi
             }
 
             [SuppressMessage("ReSharper", "MemberHidesStaticFromOuterClass")]
-            public Session Start()
+            public Session StartCollectingData()
             {
                 if (_profilerApi != null)
                     _profilerApi.Start();
@@ -503,7 +515,7 @@ namespace JetBrains.Profiler.SelfApi
             }
       
             [SuppressMessage("ReSharper", "MemberHidesStaticFromOuterClass")]
-            public Session Stop()
+            public Session StopCollectingData()
             {
                 // Without api this method is not supported
                 if (_profilerApi != null)

@@ -372,6 +372,7 @@ namespace JetBrains.Profiler.SelfApi
         return 20 * 1024 * 1024;
       }
     }
+    
     private sealed class Session
     {
       private readonly DynamicMemoryProfilerApi _profilerApi;
