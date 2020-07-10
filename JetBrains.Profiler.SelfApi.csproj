@@ -14,7 +14,7 @@
 
 ATTENTION: Note that for its work JetBrains Self-Profiling API uses the JetBrains.dotMemory.Console packages which is distributed under the JetBrains Redistributable Product license: The library is free and can be freely redistributed but disassembling is not allowed.
 </Description>
-    <PackageReleaseNotes>• Important: Currently, the API lets you work only with JetBrains dotMemory
+    <PackageReleaseNotes>• JetBrains dotTrace and dotMemory are fully supported
 • Supported OSs: Windows Vista and later, macOS 10.12 Sierra and later, Linux (most desktop distributions like CentOS, Debian, Fedora, Ubuntu and derivatives)
 • Supported frameworks: .NET Framework 4.6 and later, .NET Core 3.0 and later
 • Required framework for the API to work: .NET Frameworks 4.6.1 and later to be installed</PackageReleaseNotes>
@@ -23,7 +23,7 @@ ATTENTION: Note that for its work JetBrains Self-Profiling API uses the JetBrain
     <PackageIconUrl>https://resources.jetbrains.com/storage/products/resharper/img/icons/ProfilerSelfApi_128.png</PackageIconUrl>
     <PackageIcon>icon.png</PackageIcon>
     <PackageTags>jetbrains profiler profiling memory net dotnet netcore dotnetcore netstandard windows uwp macos mac linux</PackageTags>
-    <Version>1.2.0</Version>
+    <Version>1.2.0-preview1</Version>
   </PropertyGroup>
   <ItemGroup>
     <None Include="icon.png" Pack="true" PackagePath="\" />
