@@ -466,10 +466,8 @@ namespace JetBrains.Profiler.SelfApi
                 if (_profilerApi != null)
                     _profilerApi.SaveData();
                 else
-                {
                     _consoleProfiler.Send("get-snapshot");
-                    _consoleProfiler.AwaitResponse("(?:snapshot-saved|get-snapshot-error)", -1);
-                }
+                _consoleProfiler.AwaitResponse("(?:snapshot-saved|get-snapshot-error)", -1);
                 return this;
             }
 
