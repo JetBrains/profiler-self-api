@@ -136,6 +136,11 @@ namespace JetBrains.Profiler.SelfApi.Impl
             {
                 runnerPath = Path.Combine(prerequisitePath, $"{Name}.{SemanticVersion}", runnerName);
                 Trace.Verbose("Prerequisite.TryGetRunner: External path provided, looking at `{0}`", runnerPath);
+                if (File.Exists(runnerPath))
+                    return true;
+                
+                runnerPath = Path.Combine(prerequisitePath, runnerName);
+                Trace.Verbose("Prerequisite.TryGetRunner: External path provided, looking at `{0}`", runnerPath);
                 return File.Exists(runnerPath);
             }
 
