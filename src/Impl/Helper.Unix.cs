@@ -1,4 +1,5 @@
 ﻿using System;
+using System.IO;
 using System.Runtime.InteropServices;
 using JetBrains.Profiler.SelfApi.Impl.Unix;
 
@@ -56,7 +57,7 @@ namespace JetBrains.Profiler.SelfApi.Impl
         buf = Marshal.AllocHGlobal(8192);
         var rc = LibC.uname(buf);
         if (rc != 0)
-          throw new Exception("uname() from libc returned " + rc);
+          throw new Exception("uname() was failed with errno " + Marshal.GetLastWin32Error());
 
         var platform = ToPlatformId(Marshal.PtrToStringAnsi(buf));
         var nameLen = platform.ToNameLen();
@@ -68,6 +69,15 @@ namespace JetBrains.Profiler.SelfApi.Impl
         if (buf != IntPtr.Zero)
           Marshal.FreeHGlobal(buf);
       }
+    }
+
+    private static void UnixChMod(string path, UnixFileModes mode)
+    {
+      if (!Path.IsPathRooted(path))
+        throw new ArgumentException(nameof(path));
+      var rc = LibC.chmod(path, mode);
+      if (rc != 0)
+        throw new Exception("chmod() was failed with errno " + Marshal.GetLastWin32Error());
     }
   }
 }

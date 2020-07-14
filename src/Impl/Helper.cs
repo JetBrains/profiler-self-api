@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Runtime.InteropServices;
+using JetBrains.Profiler.SelfApi.Impl.Unix;
 
 namespace JetBrains.Profiler.SelfApi.Impl
 {
@@ -10,6 +11,18 @@ namespace JetBrains.Profiler.SelfApi.Impl
 
     public static PlatformId Platform => ourPlatform.Value;
     public static ArchitectureId OsArchitecture => ourOsArchitecture.Value;
+
+    public static void ChModExecutable(string path)
+    {
+      if (ourPlatform.Value != PlatformId.Windows)
+        UnixChMod(path, UnixFileModes.rwxr_xr_x);
+    }
+
+    public static void ChModNormal(string path)
+    {
+      if (ourPlatform.Value != PlatformId.Windows)
+        UnixChMod(path, UnixFileModes.rw_r__r__);
+    }
 
     private static PlatformId DeducePlatformId()
     {
