@@ -93,8 +93,11 @@ namespace JetBrains.Profiler.SelfApi
         private const int Timeout = 30000;
         private static readonly ConsoleToolRunner OurConsoleToolRunner = new ConsoleToolRunner(new Prerequisite());
         private static readonly object OurMutex = new object();
+
         private static Session _session;
         private static string[] _collectedSnapshots;
+        private static HashSet<string> _deletedIndexFiles;
+        private static int _packedInZipCount;
 
         /// <summary>
         /// Makes sure that the dotTrace command-line profiler is downloaded and is ready to use.
@@ -173,6 +176,8 @@ namespace JetBrains.Profiler.SelfApi
                     throw new InvalidOperationException("The profiling session is not active: Did you call Attach()?");
 
                 _collectedSnapshots = null;
+                _deletedIndexFiles = new HashSet<string>();
+                _packedInZipCount = 0;
                 _session = RunProfiler(config).AwaitConnected(Timeout);
             }
         }
@@ -271,6 +276,16 @@ namespace JetBrains.Profiler.SelfApi
             }
         }
 
+        private static string[] GetCollectedSnapshotIndexFilesCore()
+        {
+            if (_session != null)
+                return _session.GetCollectedSnapshotsIndexFiles();
+            if (_collectedSnapshots != null)
+                return _collectedSnapshots;
+                
+            throw new InvalidOperationException("The profiling session was never initiated: Did you call Attach()?");
+        }
+
         /// <summary>
         /// Returns collected snapshot index files
         /// For each collected snapshot, a separate index file is returned.
@@ -283,14 +298,7 @@ namespace JetBrains.Profiler.SelfApi
         public static string[] GetCollectedSnapshotIndexFiles()
         {
             lock (OurMutex)
-            {
-                if (_session != null)
-                    return _session.GetCollectedSnapshotsIndexFiles();
-                if (_collectedSnapshots != null)
-                    return _collectedSnapshots;
-                
-                throw new InvalidOperationException("The profiling session was never initiated: Did you call Attach()?");
-            }
+                return GetCollectedSnapshotIndexFilesCore().Where(f => !_deletedIndexFiles.Contains(f)).ToArray();
         }
 
         /// <summary>
@@ -300,34 +308,63 @@ namespace JetBrains.Profiler.SelfApi
         /// <returns>Paths to snapshot files</returns>
         public static string[] GetCollectedSnapshotFiles()
         {
-            return GetCollectedSnapshotIndexFiles().SelectMany(GetSnapshotFiles).ToArray();
+            lock (OurMutex)
+                return GetCollectedSnapshotIndexFilesCore().Where(f => !_deletedIndexFiles.Contains(f)).SelectMany(GetSnapshotFiles).ToArray();
         }
 
         /// <summary>
         /// Returns all collected snapshot files (including index files)
         /// packed into a single zip file
         /// </summary>
-        /// <returns>Path to the zip file</returns>
+        /// <returns>Path to the zip file. Returns null if data is not yet collected.</returns>
         public static string GetCollectedSnapshotFilesArchive(bool deleteUnpackedFiles)
         {
-            var indexFile = GetCollectedSnapshotIndexFiles().FirstOrDefault();
-            var directory = Path.GetDirectoryName(indexFile);
-            var name = Path.GetFileNameWithoutExtension(indexFile);
-            var zipFilePatch = CreateUniqFileName(directory, name, "zip");
-            var filesToDelete = new List<string>();
+            lock (OurMutex)
+            {
+                var indexFiles = GetCollectedSnapshotIndexFilesCore();
+                if (_packedInZipCount >= indexFiles.Length)
+                    return null;
 
-            using (var zipInput = File.OpenWrite(zipFilePatch))
-            using (var zip = new ZipArchive(zipInput, ZipArchiveMode.Create))
-                foreach (var file in GetCollectedSnapshotFiles())
+                var firstIndexFile = indexFiles[_packedInZipCount];
+                var directory = Path.GetDirectoryName(firstIndexFile);
+                var name = Path.GetFileNameWithoutExtension(firstIndexFile);
+                var zipFilePatch = CreateUniqFileName(directory, name, "zip");
+                var packedIndexFiles = new List<string>();
+                var packedFiles = new List<string>();
+
+                using (var zipInput = File.OpenWrite(zipFilePatch))
+                using (var zip = new ZipArchive(zipInput, ZipArchiveMode.Create))
+                    for (var index = _packedInZipCount; index < indexFiles.Length; index++)
+                    {
+                        var indexFile = indexFiles[index];
+                        packedIndexFiles.Add(indexFile);
+                        foreach (var file in GetSnapshotFiles(indexFile))
+                        {
+                            zip.CreateEntryFromFile(file, Path.GetFileName(file));
+                            packedFiles.Add(file);
+                        }
+                    }
+
+                if (deleteUnpackedFiles)
                 {
-                    zip.CreateEntryFromFile(file, Path.GetFileName(file));
-                    filesToDelete.Add(file);
+                    foreach (var packedFile in packedFiles)
+                    {
+                        try
+                        {
+                            File.Delete(packedFile);
+                        }
+                        catch
+                        {
+                        }
+                    }
+
+                    foreach (var packedIndexFile in packedIndexFiles)
+                        _deletedIndexFiles.Add(packedIndexFile);
                 }
 
-            if(deleteUnpackedFiles)
-                filesToDelete.ForEach(File.Delete);
-
-            return zipFilePatch;
+                _packedInZipCount = indexFiles.Length;
+                return zipFilePatch;
+            }
         }
 
         private static string[] GetSnapshotFiles(string indexFile)
