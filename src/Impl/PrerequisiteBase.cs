@@ -104,6 +104,11 @@ namespace JetBrains.Profiler.SelfApi.Impl
                             );
                         }
 
+                        if (Helper.Platform != PlatformId.Windows)
+                        {
+                            Trace.Verbose("Setting up executable bit for {0}...", dstPath);
+                            Helper.ChModExecutable(dstPath);
+                        }
                         subStart += subStep;
                     }
                 }
