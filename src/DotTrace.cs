@@ -168,6 +168,9 @@ namespace JetBrains.Profiler.SelfApi
         {
             if (config == null) throw new ArgumentNullException(nameof(config));
 
+            if(Environment.Version.Major == 3 && Environment.Version.Minor == 0)
+                throw new Exception("Self profiling api is not supported on .NET Core 3.0 or earlier");
+
             lock (OurMutex)
             {
                 OurConsoleToolRunner.AssertIfReady();
