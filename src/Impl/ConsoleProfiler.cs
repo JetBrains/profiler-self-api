@@ -116,7 +116,7 @@ namespace JetBrains.Profiler.SelfApi.Impl
 
         private Regex BuildCommandRegex(string command, string argument)
         {
-            return new Regex($@"{_prefix}\[\x22{command}\x22,\s*\{{{argument}\}}\]", RegexOptions.Compiled | RegexOptions.IgnoreCase);
+            return new Regex($@"{_prefix}\[\x22{command}\x22(?:,\s*\{{{argument}\}})?\]", RegexOptions.Compiled | RegexOptions.IgnoreCase);
         }
 
         public bool AwaitResponse(string command, int milliseconds)
@@ -183,6 +183,7 @@ namespace JetBrains.Profiler.SelfApi.Impl
 
         public void AwaitConnected(int milliseconds)
         {
+            AwaitResponse("ready", -1);
             if(!AwaitResponse("connected", milliseconds))
                 throw BuildException($"{_presentableName} was not connected. See details below.");
         
