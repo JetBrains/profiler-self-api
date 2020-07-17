@@ -183,7 +183,6 @@ namespace JetBrains.Profiler.SelfApi.Impl
 
     public void AwaitConnected(int milliseconds)
     {
-      AwaitResponse("ready", -1);
       if (!AwaitResponse("connected", milliseconds))
         throw BuildException($"{_presentableName} was not connected. See details below.");
 

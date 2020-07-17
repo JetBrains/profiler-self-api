@@ -172,10 +172,10 @@ namespace JetBrains.Profiler.SelfApi
       if (config == null) throw new ArgumentNullException(nameof(config));
 
       if (Helper.Platform == PlatformId.MacOs && Environment.Version.Major == 3)
-        throw new Exception("Self API is supported only for .NET 5.0 and newer");
+        throw new Exception("The self-profiling API is supported only on .NET 5.0 or later");
 
       if (Helper.Platform == PlatformId.Linux && Environment.Version.Major == 3 && Environment.Version.Minor == 0)
-        throw new Exception("Self API is supported only for .NET Core 3.1 and newer");
+        throw new Exception("The self-profiling API is supported only on .NET Core 3.1 or later");
 
       lock (OurMutex)
       {
@@ -556,6 +556,7 @@ namespace JetBrains.Profiler.SelfApi
 
       public Session AwaitConnected(int milliseconds)
       {
+        _consoleProfiler.AwaitResponse("ready", -1);
         _consoleProfiler.AwaitConnected(milliseconds);
         return this;
       }
