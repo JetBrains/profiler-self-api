@@ -223,6 +223,9 @@ namespace JetBrains.Profiler.SelfApi
     {
       if (config == null) throw new ArgumentNullException(nameof(config));
 
+      if (Helper.Platform == PlatformId.MacOs && Environment.Version.Major == 3)
+        throw new Exception("Self API is supported only for .NET 5.0 and newer");
+
       lock (OurMutex)
       {
         OurConsoleToolRunner.AssertIfReady();

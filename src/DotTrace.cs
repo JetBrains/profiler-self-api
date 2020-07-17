@@ -171,8 +171,11 @@ namespace JetBrains.Profiler.SelfApi
     {
       if (config == null) throw new ArgumentNullException(nameof(config));
 
-      if (Environment.Version.Major == 3 && Environment.Version.Minor == 0)
-        throw new Exception("Self API is not supported on .NET Core 3.0");
+      if (Helper.Platform == PlatformId.MacOs && Environment.Version.Major == 3)
+        throw new Exception("Self API is supported only for .NET 5.0 and newer");
+
+      if (Helper.Platform == PlatformId.Linux && Environment.Version.Major == 3 && Environment.Version.Minor == 0)
+        throw new Exception("Self API is supported only for .NET Core 3.1 and newer");
 
       lock (OurMutex)
       {
