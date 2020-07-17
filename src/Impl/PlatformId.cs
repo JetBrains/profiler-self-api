@@ -3,7 +3,7 @@
   internal enum PlatformId
   {
     Linux,
-    MacOsX,
+    MacOs,
     Windows
   }
 }

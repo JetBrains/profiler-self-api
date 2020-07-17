@@ -12,7 +12,7 @@ namespace JetBrains.Profiler.SelfApi.Impl.Unix
 
     [DllImport(LibraryName, SetLastError = true)]
     public static extern int uname(IntPtr buf);
-    
+
     [DllImport(LibraryName, SetLastError = true)]
     public static extern int chmod(string pathname, UnixFileModes mode);
   }

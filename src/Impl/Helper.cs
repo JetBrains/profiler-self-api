@@ -36,7 +36,7 @@ namespace JetBrains.Profiler.SelfApi.Impl
       }
 #else
       if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows)) return PlatformId.Windows;
-      if (RuntimeInformation.IsOSPlatform(OSPlatform.OSX)) return PlatformId.MacOsX;
+      if (RuntimeInformation.IsOSPlatform(OSPlatform.OSX)) return PlatformId.MacOs;
       if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux)) return PlatformId.Linux;
 #endif
       throw new PlatformNotSupportedException();
@@ -70,7 +70,7 @@ namespace JetBrains.Profiler.SelfApi.Impl
       switch (platformId)
       {
       case PlatformId.Linux: return "linux";
-      case PlatformId.MacOsX: return "macos";
+      case PlatformId.MacOs: return "macos";
       case PlatformId.Windows: return "windows";
       default: throw new ArgumentOutOfRangeException(nameof(platformId), platformId, null);
       }

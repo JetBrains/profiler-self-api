@@ -32,10 +32,11 @@ namespace JetBrains.Profiler.SelfApi
   /// </remarks>
   [SuppressMessage("ReSharper", "UnusedMethodReturnValue.Local")]
   [SuppressMessage("ReSharper", "UnusedMember.Global")]
+  [SuppressMessage("ReSharper", "UnusedType.Global")]
   public static class DotMemory
   {
     private const string MessageServicePrefix = "##dotMemory";
-    private const string CltPresentableName = "dotMemory console profiler"; 
+    private const string CltPresentableName = "dotMemory console profiler";
 
     /// <summary>
     /// The version of JetBrains.dotMemory.Console NuGet-package that must be downloaded.
@@ -61,12 +62,12 @@ namespace JetBrains.Profiler.SelfApi
       {
         if (WorkspaceDir != null)
           throw new InvalidOperationException("The SaveToFile and SaveToDir are mutually exclusive.");
-        
+
         WorkspaceFile = filePath ?? throw new ArgumentNullException(nameof(filePath));
         IsOverwriteWorkspace = overwrite;
         return this;
       }
-      
+
       /// <summary>
       /// Specifies the path to the workspace directory (filename will be auto-generated).
       /// </summary>
@@ -74,11 +75,11 @@ namespace JetBrains.Profiler.SelfApi
       {
         if (WorkspaceDir != null)
           throw new InvalidOperationException("The SaveToDir and SaveToFile are mutually exclusive.");
-        
+
         WorkspaceDir = dirPath ?? throw new ArgumentNullException(nameof(dirPath));
         return this;
       }
-      
+
       /// <summary>
       /// Specifies whether to open the generated workspace in JetBrains dotMemory.
       /// </summary>
@@ -96,7 +97,7 @@ namespace JetBrains.Profiler.SelfApi
         LogLevel = "Trace";
         return this;
       }
-      
+
       /// <summary>
       /// Sets the VERBOSE logging level.
       /// </summary>
@@ -112,16 +113,16 @@ namespace JetBrains.Profiler.SelfApi
       public Config WithCommandLineArgument(string argument)
       {
         if (argument == null) throw new ArgumentNullException(nameof(argument));
-        
+
         if (OtherArguments != null)
           OtherArguments += " " + argument;
         else
           OtherArguments = argument;
-        
+
         return this;
       }
     }
-    
+
     private const int Timeout = 30000;
     private static readonly ConsoleToolRunner OurConsoleToolRunner = new ConsoleToolRunner(new Prerequisite());
     private static readonly object OurMutex = new object();
@@ -143,9 +144,9 @@ namespace JetBrains.Profiler.SelfApi
     /// <param name="nugetApi">NuGet API version.</param>
     /// <param name="downloadTo">NuGet download destination folder. If null, %LocalAppData% is used.</param>
     public static Task EnsurePrerequisiteAsync(
-      CancellationToken cancellationToken, 
-      IProgress<double> progress = null, 
-      Uri nugetUrl = null, 
+      CancellationToken cancellationToken,
+      IProgress<double> progress = null,
+      Uri nugetUrl = null,
       NuGetApi nugetApi = NuGetApi.V3,
       string downloadTo = null)
     {
@@ -158,7 +159,7 @@ namespace JetBrains.Profiler.SelfApi
     /// </summary>
     public static Task EnsurePrerequisiteAsync(
       IProgress<double> progress = null,
-      Uri nugetUrl = null, 
+      Uri nugetUrl = null,
       NuGetApi nugetApi = NuGetApi.V3,
       string downloadTo = null)
     {
@@ -169,13 +170,13 @@ namespace JetBrains.Profiler.SelfApi
     /// The shortcut for <c>EnsurePrerequisiteAsync(CancellationToken.None, progress: null, nugetUrl, prerequisitePath).Wait()</c>
     /// </summary>
     public static void EnsurePrerequisite(
-      Uri nugetUrl = null, 
+      Uri nugetUrl = null,
       NuGetApi nugetApi = NuGetApi.V3,
       string downloadTo = null)
     {
       EnsurePrerequisiteAsync(null, nugetUrl, nugetApi, downloadTo).Wait();
     }
-    
+
     /// <summary>
     /// The shortcut for <see cref="Attach()"/>; <see cref="GetSnapshot"/>; <see cref="Detach"/>;
     /// </summary>
@@ -196,7 +197,7 @@ namespace JetBrains.Profiler.SelfApi
       lock (OurMutex)
       {
         OurConsoleToolRunner.AssertIfReady();
-        
+
         if (_session != null)
           throw new InvalidOperationException("The profiling session is active already: Attach() was called early.");
 
@@ -254,7 +255,7 @@ namespace JetBrains.Profiler.SelfApi
         }
       }
     }
-    
+
     /// <summary>
     /// Gets a memory snapshot of the current process.
     /// </summary>
@@ -278,7 +279,7 @@ namespace JetBrains.Profiler.SelfApi
       var workspaceName = $"{Process.GetCurrentProcess().ProcessName}.{DateTime.Now:yyyy-MM-ddTHH-mm-ss.fff}.dmw";
       if (config.WorkspaceDir != null)
         return Path.Combine(config.WorkspaceDir, workspaceName);
-      
+
       return Path.Combine(Path.GetTempPath(), workspaceName);
     }
 
@@ -287,22 +288,22 @@ namespace JetBrains.Profiler.SelfApi
       Trace.Verbose("DotMemory.RunConsole: Looking for runner...");
 
       var runnerPath = OurConsoleToolRunner.GetRunner();
-      
+
       var workspaceFile = GetSaveToFilePath(config);
-      
+
       var commandLine = new StringBuilder();
 
       if (config.LogLevel != null)
         commandLine.Append($"--log-level={config.LogLevel} ");
-      
+
       if (config.LogFile != null)
         commandLine.Append($"\"--log-file={config.LogFile}\" ");
-      
+
       commandLine.Append($"{command} {Process.GetCurrentProcess().Id} \"-f={workspaceFile}\"");
 
       if (config.IsOverwriteWorkspace)
         commandLine.Append(" --overwrite");
-      
+
       if (config.IsOpenDotMemory)
         commandLine.Append(" --open-dotmemory");
 
@@ -329,7 +330,7 @@ namespace JetBrains.Profiler.SelfApi
           ? "DotMemory.RunConsole: API assembly found, will use it"
           : "DotMemory.RunConsole: API assembly not found, will use service messages");
       }
-      
+
       if (api != null)
         commandLine.Append(" --use-api");
 
@@ -337,9 +338,9 @@ namespace JetBrains.Profiler.SelfApi
         commandLine.Append(' ').Append(config.OtherArguments);
 
       Trace.Info("DotMemory.RunConsole:\n  runner = `{0}`\n  arguments = `{1}`", runnerPath, commandLine);
-    
-      var consoleProfiler = new ConsoleProfiler(runnerPath, commandLine.ToString(), MessageServicePrefix, CltPresentableName, api != null ? (Func<bool>)api.IsReady : null);
-      
+
+      var consoleProfiler = new ConsoleProfiler(runnerPath, commandLine.ToString(), MessageServicePrefix, CltPresentableName, api != null ? (Func<bool>) api.IsReady : null);
+
       Trace.Verbose("DotMemory.RunConsole: Runner started.");
 
       return new Session(consoleProfiler, api, workspaceFile);
@@ -350,13 +351,13 @@ namespace JetBrains.Profiler.SelfApi
       public Prerequisite() : base("dotMemory", NupkgVersion)
       {
       }
-      
+
       protected override string GetRunnerName()
       {
         switch (Helper.Platform)
         {
         case PlatformId.Linux:
-        case PlatformId.MacOsX: return "dotMemory.sh";
+        case PlatformId.MacOs: return "dotMemory.sh";
         case PlatformId.Windows: return "dotMemory.exe";
         default: throw new ArgumentOutOfRangeException();
         }
@@ -372,7 +373,7 @@ namespace JetBrains.Profiler.SelfApi
         return 20 * 1024 * 1024;
       }
     }
-    
+
     private sealed class Session
     {
       private readonly DynamicMemoryProfilerApi _profilerApi;
@@ -382,7 +383,7 @@ namespace JetBrains.Profiler.SelfApi
       {
         _consoleProfiler = consoleProfiler;
         _profilerApi = profilerApi;
-        
+
         WorkspaceFile = workspaceFile;
       }
 
@@ -397,7 +398,7 @@ namespace JetBrains.Profiler.SelfApi
           _consoleProfiler.Send("disconnect");
         return this;
       }
-      
+
       [SuppressMessage("ReSharper", "MemberHidesStaticFromOuterClass")]
       public Session GetSnapshot(string name)
       {
@@ -410,13 +411,13 @@ namespace JetBrains.Profiler.SelfApi
         }
         return this;
       }
-      
+
       public Session AwaitConnected(int milliseconds)
       {
         _consoleProfiler.AwaitConnected(milliseconds);
         return this;
       }
-      
+
       public Session AwaitFinished(int milliseconds)
       {
         _consoleProfiler.AwaitFinished(milliseconds);
