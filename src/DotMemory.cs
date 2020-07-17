@@ -91,7 +91,7 @@ namespace JetBrains.Profiler.SelfApi
       /// <summary>
       /// Sets the TRACE logging level.
       /// </summary>
-      public Config UseLogLevelTrace<T>()
+      public Config UseLogLevelTrace()
       {
         LogLevel = "Trace";
         return this;
@@ -109,7 +109,7 @@ namespace JetBrains.Profiler.SelfApi
       /// <summary>
       /// Appends an arbitrary argument to the command line as is (without any quoting, and so on).
       /// </summary>
-      public Config WithCommandLineArgument<T>(string argument)
+      public Config WithCommandLineArgument(string argument)
       {
         if (argument == null) throw new ArgumentNullException(nameof(argument));
         
