@@ -12,7 +12,7 @@ namespace JetBrains.Profiler.SelfApi.Impl
     void ProcessCommand(string command, string args);
   }
 
-  internal class ConsoleProfiler
+  internal sealed class ConsoleProfiler
   {
     private readonly Process _process;
     private readonly string _prefix;

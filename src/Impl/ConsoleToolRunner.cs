@@ -5,7 +5,7 @@ using System.Threading.Tasks;
 
 namespace JetBrains.Profiler.SelfApi.Impl
 {
-  internal class ConsoleToolRunner
+  internal sealed class ConsoleToolRunner
   {
     private readonly PrerequisiteBase _prerequisite;
     private Task _prerequisiteDownloadTask;

@@ -3,7 +3,7 @@ using System.Reflection;
 
 namespace JetBrains.Profiler.SelfApi.Impl
 {
-  internal class DynamicProfiler
+  internal sealed class DynamicProfiler
   {
     private readonly Type _profiler;
 
