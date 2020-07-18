@@ -169,14 +169,10 @@ namespace JetBrains.Profiler.SelfApi
     /// </summary>
     public static void Attach(Config config)
     {
-      if (config == null) throw new ArgumentNullException(nameof(config));
-
-      if (Helper.Platform == PlatformId.MacOs && Environment.Version.Major == 3)
-        throw new Exception("The self-profiling API is supported only on .NET 5.0 or later");
-
-      if (Helper.Platform == PlatformId.Linux && Environment.Version.Major == 3 && Environment.Version.Minor == 0)
-        throw new Exception("The self-profiling API is supported only on .NET Core 3.1 or later");
-
+      if (config == null)
+        throw new ArgumentNullException(nameof(config));
+      Helper.CheckAttachCompatibility();
+      Helper.CheckSamplingCompatibility();
       lock (OurMutex)
       {
         OurConsoleToolRunner.AssertIfReady();
