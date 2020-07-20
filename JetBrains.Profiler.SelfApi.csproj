@@ -23,7 +23,7 @@ ATTENTION: Note that for its work JetBrains Self-Profiling API uses the JetBrain
     <PackageIconUrl>https://resources.jetbrains.com/storage/products/resharper/img/icons/ProfilerSelfApi_128.png</PackageIconUrl>
     <PackageIcon>icon.png</PackageIcon>
     <PackageTags>jetbrains profiler profiling memory performance net dotnet netcore dotnetcore netstandard windows uwp macos mac linux</PackageTags>
-    <Version>1.2.0-preview9</Version>
+    <Version>1.2.0</Version>
   </PropertyGroup>
   <ItemGroup>
     <None Include="icon.png" Pack="true" PackagePath="\" />
