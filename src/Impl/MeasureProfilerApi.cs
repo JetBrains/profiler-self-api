@@ -2,9 +2,11 @@
 
 namespace JetBrains.Profiler.SelfApi.Impl
 {
-  internal sealed class DynamicMeasureProfilerApi
+  internal sealed class MeasureProfilerApi
   {
-    private DynamicMeasureProfilerApi()
+    public static readonly MeasureProfilerApi Instance = new MeasureProfilerApi();
+
+    private MeasureProfilerApi()
     {
     }
 
@@ -14,10 +16,5 @@ namespace JetBrains.Profiler.SelfApi.Impl
     public void DropData() => MeasureProfiler.DropData();
     public void Detach() => MeasureProfiler.Detach();
     public bool IsReady() => (MeasureProfiler.GetFeatures() & MeasureFeatures.Ready) == MeasureFeatures.Ready;
-
-    public static DynamicMeasureProfilerApi TryCreate()
-    {
-      return new DynamicMeasureProfilerApi();
-    }
   }
 }

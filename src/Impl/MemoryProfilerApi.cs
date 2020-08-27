@@ -2,9 +2,11 @@ using JetBrains.Profiler.Api;
 
 namespace JetBrains.Profiler.SelfApi.Impl
 {
-  internal sealed class DynamicMemoryProfilerApi
+  internal sealed class MemoryProfilerApi
   {
-    private DynamicMemoryProfilerApi()
+    public static readonly MemoryProfilerApi Instance = new MemoryProfilerApi();
+
+    private MemoryProfilerApi()
     {
     }
 
@@ -12,9 +14,5 @@ namespace JetBrains.Profiler.SelfApi.Impl
     public void Detach() => MemoryProfiler.Detach();
     public bool IsReady() => (MemoryProfiler.GetFeatures() & MemoryFeatures.Ready) == MemoryFeatures.Ready;
 
-    public static DynamicMemoryProfilerApi TryCreate()
-    {
-      return new DynamicMemoryProfilerApi();
-    }
   }
 }

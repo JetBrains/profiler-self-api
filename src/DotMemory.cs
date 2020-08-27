@@ -308,13 +308,13 @@ namespace JetBrains.Profiler.SelfApi
       if (config.IsOpenDotMemory)
         commandLine.Append(" --open-dotmemory");
 
-      DynamicMemoryProfilerApi api = null;
+      MemoryProfilerApi api = null;
       if (config.IsUseApi.HasValue)
       {
         if (config.IsUseApi.Value)
         {
           Trace.Info("DotMemory.RunConsole: force to use API");
-          api = DynamicMemoryProfilerApi.TryCreate();
+          api = MemoryProfilerApi.Instance;
           if (api == null)
             throw new InvalidOperationException("Unable to load `JetBrains.Profiler.Api` assembly.");
         }
@@ -326,7 +326,7 @@ namespace JetBrains.Profiler.SelfApi
       else // auto mode
       {
         Trace.Info("DotMemory.RunConsole: auto API mode...");
-        api = DynamicMemoryProfilerApi.TryCreate();
+        api = MemoryProfilerApi.Instance;
         Trace.Info(api != null
           ? "DotMemory.RunConsole: API assembly found, will use it"
           : "DotMemory.RunConsole: API assembly not found, will use service messages");
@@ -377,10 +377,10 @@ namespace JetBrains.Profiler.SelfApi
 
     private sealed class Session
     {
-      private readonly DynamicMemoryProfilerApi _profilerApi;
+      private readonly MemoryProfilerApi _profilerApi;
       private readonly ConsoleProfiler _consoleProfiler;
 
-      public Session(ConsoleProfiler consoleProfiler, DynamicMemoryProfilerApi profilerApi, string workspaceFile)
+      public Session(ConsoleProfiler consoleProfiler, MemoryProfilerApi profilerApi, string workspaceFile)
       {
         _consoleProfiler = consoleProfiler;
         _profilerApi = profilerApi;

@@ -414,13 +414,13 @@ namespace JetBrains.Profiler.SelfApi
       if (config.SnapshotFile != null)
         commandLine.Append($" --save-to={config.SnapshotFile}");
 
-      DynamicMeasureProfilerApi api = null;
+      MeasureProfilerApi api = null;
       if (config.IsUseApi.HasValue)
       {
         if (config.IsUseApi.Value)
         {
           Trace.Info("DotTrace.RunConsole: force to use API");
-          api = DynamicMeasureProfilerApi.TryCreate();
+          api = MeasureProfilerApi.Instance;
           if (api == null)
             throw new InvalidOperationException("Unable to load the `JetBrains.Profiler.Api` assembly.");
         }
@@ -432,7 +432,7 @@ namespace JetBrains.Profiler.SelfApi
       else // auto mode
       {
         Trace.Info("DotTrace.RunConsole: auto API mode...");
-        api = DynamicMeasureProfilerApi.TryCreate();
+        api = MeasureProfilerApi.Instance;
         Trace.Info(api != null
           ? "DotTrace.RunConsole: API assembly found, will use it"
           : "DotTrace.RunConsole: API assembly not found, will use service messages");
@@ -481,11 +481,11 @@ namespace JetBrains.Profiler.SelfApi
 
     private sealed class Session
     {
-      private readonly DynamicMeasureProfilerApi _profilerApi;
+      private readonly MeasureProfilerApi _profilerApi;
       private readonly CollectedSnapshots _snapshots;
       private readonly ConsoleProfiler _consoleProfiler;
 
-      public Session(ConsoleProfiler consoleProfiler, DynamicMeasureProfilerApi profilerApi, CollectedSnapshots snapshots)
+      public Session(ConsoleProfiler consoleProfiler, MeasureProfilerApi profilerApi, CollectedSnapshots snapshots)
       {
         _consoleProfiler = consoleProfiler;
         _profilerApi = profilerApi;
