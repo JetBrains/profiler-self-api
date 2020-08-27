@@ -470,20 +470,14 @@ namespace JetBrains.Profiler.SelfApi
       [SuppressMessage("ReSharper", "MemberHidesStaticFromOuterClass")]
       public Session Detach()
       {
-        if (_profilerApi != null)
-          _profilerApi.Detach();
-        else
-          _consoleProfiler.Send("disconnect");
+        _profilerApi.Detach();
         return this;
       }
 
       [SuppressMessage("ReSharper", "MemberHidesStaticFromOuterClass")]
       public Session SaveData()
       {
-        if (_profilerApi != null)
-          _profilerApi.SaveData();
-        else
-          _consoleProfiler.Send("get-snapshot");
+        _profilerApi.SaveData();
         _consoleProfiler.AwaitResponse("(?:snapshot-saved|get-snapshot-error)", -1);
         return this;
       }
@@ -491,37 +485,21 @@ namespace JetBrains.Profiler.SelfApi
       [SuppressMessage("ReSharper", "MemberHidesStaticFromOuterClass")]
       public Session DropData()
       {
-        if (_profilerApi != null)
-          _profilerApi.DropData();
-        else
-        {
-          _consoleProfiler.Send("drop");
-          _consoleProfiler.AwaitResponse("(?:stopped|drop-error)", 5000);
-        }
-
+        _profilerApi.DropData();
         return this;
       }
 
       [SuppressMessage("ReSharper", "MemberHidesStaticFromOuterClass")]
       public Session StartCollectingData()
       {
-        if (_profilerApi != null)
-          _profilerApi.Start();
-        else
-        {
-          _consoleProfiler.Send("start");
-          _consoleProfiler.AwaitResponse("(?:started|start-error)", 5000);
-        }
-
+        _profilerApi.Start();
         return this;
       }
 
       [SuppressMessage("ReSharper", "MemberHidesStaticFromOuterClass")]
       public Session StopCollectingData()
       {
-        // Without api this method is not supported
-        if (_profilerApi != null)
-          _profilerApi.Stop();
+        _profilerApi.Stop();
         return this;
       }
 
