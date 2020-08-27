@@ -15,11 +15,10 @@
 ATTENTION: Note that for its work JetBrains Self-Profiling API uses the JetBrains.dotMemory.Console and JetBrains.dotTrace.CommandLineTools packages which is distributed under the JetBrains Redistributable Product license: The library is free and can be freely redistributed but disassembling is not allowed.
 </Description>
     <PackageReleaseNotes>• JetBrains dotTrace and dotMemory are fully supported
-• Supported OSs: Windows Vista and later, macOS 10.12 Sierra and later, Linux (most desktop distributions like CentOS, Debian, Fedora, Ubuntu and derivatives)
-• Supported frameworks: .NET Framework 4.6 and later, .NET Core 3.0 and later
-• Required framework for the API to work: .NET Frameworks 4.6.1 and later to be installed</PackageReleaseNotes>
+• Supported OSs: Windows 7 and later, macOS 10.12 Sierra and later, Linux (most desktop distributions like CentOS, Debian, Fedora, Ubuntu and derivatives)
+• Supported frameworks: .NET Framework 4.6.1 and later, .NET Core 3.0 and later</PackageReleaseNotes>
     <RepositoryUrl>https://github.com/JetBrains/profiler-self-api</RepositoryUrl>    
-    <PackageProjectUrl>https://www.jetbrains.com/help/dotmemory/Profiling_Guidelines__Advanced_Profiling_Using_dotTrace_API.html#self-profiled-applications</PackageProjectUrl>
+    <PackageProjectUrl>https://github.com/JetBrains/profiler-self-api/blob/master/README.md</PackageProjectUrl>
     <PackageIconUrl>https://resources.jetbrains.com/storage/products/resharper/img/icons/ProfilerSelfApi_128.png</PackageIconUrl>
     <PackageIcon>icon.png</PackageIcon>
     <PackageTags>jetbrains profiler profiling memory performance net dotnet netcore dotnetcore netstandard windows uwp macos mac linux</PackageTags>
@@ -28,8 +27,12 @@ ATTENTION: Note that for its work JetBrains Self-Profiling API uses the JetBrain
   <ItemGroup>
     <None Include="icon.png" Pack="true" PackagePath="\" />
   </ItemGroup>
+  <PropertyGroup>
+    <FrameworkPathOverride Condition="'$(TargetFramework)' == 'net46'">$(NuGetPackageRoot)microsoft.netframework.referenceassemblies.net46/1.0.0/build/.NETFramework/v4.6/</FrameworkPathOverride>
+  </PropertyGroup>
   <ItemGroup>
-    <Reference Include="System.IO.Compression" Condition="'$(TargetFramework)' == 'net46'" />
-    <Reference Include="System.Net.Http" Condition="'$(TargetFramework)' == 'net46'" />
+    <PackageReference Condition="'$(TargetFramework)' == 'net46'" Include="Microsoft.NETFramework.ReferenceAssemblies.net46" Version="1.0.0" ExcludeAssets="All" PrivateAssets="All" />
+    <Reference Condition="'$(TargetFramework)' == 'net46'" Include="System.IO.Compression" />
+    <Reference Condition="'$(TargetFramework)' == 'net46'" Include="System.Net.Http" />
   </ItemGroup>
 </Project>
