@@ -6,6 +6,5 @@
   public abstract class CommonConfig
   {
     internal string LogFile;
-    internal bool? IsUseApi;
   }
 }

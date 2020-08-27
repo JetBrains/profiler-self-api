@@ -54,6 +54,7 @@ namespace JetBrains.Profiler.SelfApi
       internal bool IsOpenDotMemory;
       internal bool IsOverwriteWorkspace;
       internal string OtherArguments;
+      internal bool IsUseApi;
 
       /// <summary>
       /// Specifies the path to the workspace file (snapshots storage).
@@ -308,28 +309,16 @@ namespace JetBrains.Profiler.SelfApi
       if (config.IsOpenDotMemory)
         commandLine.Append(" --open-dotmemory");
 
-      MemoryProfilerApi api = null;
-      if (config.IsUseApi.HasValue)
+      MemoryProfilerApi api;
+      if (config.IsUseApi)
       {
-        if (config.IsUseApi.Value)
-        {
-          Trace.Info("DotMemory.RunConsole: force to use API");
-          api = MemoryProfilerApi.Instance;
-          if (api == null)
-            throw new InvalidOperationException("Unable to load `JetBrains.Profiler.Api` assembly.");
-        }
-        else
-        {
-          Trace.Info("DotMemory.RunConsole: force to do not use API");
-        }
-      }
-      else // auto mode
-      {
-        Trace.Info("DotMemory.RunConsole: auto API mode...");
+        Trace.Info("DotMemory.RunConsole: force to use API");
         api = MemoryProfilerApi.Instance;
-        Trace.Info(api != null
-          ? "DotMemory.RunConsole: API assembly found, will use it"
-          : "DotMemory.RunConsole: API assembly not found, will use service messages");
+      }
+      else
+      {
+        Trace.Info("DotMemory.RunConsole: force to do not use API");
+        api = null;
       }
 
       if (api != null)

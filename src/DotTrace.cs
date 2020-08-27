@@ -401,6 +401,7 @@ namespace JetBrains.Profiler.SelfApi
       commandLine.Append($"attach {Process.GetCurrentProcess().Id}");
       commandLine.Append(" --service-input=stdin --service-output=On");
       commandLine.Append(" --collect-data-from-start=Off");
+      commandLine.Append(" --use-api");
 
       if (config.LogFile != null)
         commandLine.Append($" --log-file=\"{config.LogFile}\" --debug-logging");
@@ -414,38 +415,12 @@ namespace JetBrains.Profiler.SelfApi
       if (config.SnapshotFile != null)
         commandLine.Append($" --save-to={config.SnapshotFile}");
 
-      MeasureProfilerApi api = null;
-      if (config.IsUseApi.HasValue)
-      {
-        if (config.IsUseApi.Value)
-        {
-          Trace.Info("DotTrace.RunConsole: force to use API");
-          api = MeasureProfilerApi.Instance;
-          if (api == null)
-            throw new InvalidOperationException("Unable to load the `JetBrains.Profiler.Api` assembly.");
-        }
-        else
-        {
-          Trace.Info("DotTrace.RunConsole: force to do not use API");
-        }
-      }
-      else // auto mode
-      {
-        Trace.Info("DotTrace.RunConsole: auto API mode...");
-        api = MeasureProfilerApi.Instance;
-        Trace.Info(api != null
-          ? "DotTrace.RunConsole: API assembly found, will use it"
-          : "DotTrace.RunConsole: API assembly not found, will use service messages");
-      }
-
-      if (api != null)
-        commandLine.Append(" --use-api");
-
       Trace.Info("DotTrace.RunConsole:\n  runner = `{0}`\n  arguments = `{1}`", runnerPath, commandLine);
 
       var collectedSnapshots = new CollectedSnapshots();
+      var api = MeasureProfilerApi.Instance;
       var consoleProfiler = new ConsoleProfiler(runnerPath, commandLine.ToString(), MessageServicePrefix,
-        CltPresentableName, api != null ? (Func<bool>) api.IsReady : null, collectedSnapshots);
+        CltPresentableName, api.IsReady, collectedSnapshots);
       Trace.Verbose("DotTrace.RunConsole: Runner started.");
 
       return new Session(consoleProfiler, api, collectedSnapshots);
