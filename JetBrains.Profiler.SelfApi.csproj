@@ -31,7 +31,7 @@ ATTENTION: Note that for its work JetBrains Self-Profiling API uses the JetBrain
     <FrameworkPathOverride Condition="'$(TargetFramework)' == 'net46'">$(NuGetPackageRoot)microsoft.netframework.referenceassemblies.net46/1.0.0/build/.NETFramework/v4.6/</FrameworkPathOverride>
   </PropertyGroup>
   <ItemGroup>
-    <PackageReference Include="JetBrains.Profiler.Api" Version="[1.1.6,1.2.0)" />
+    <PackageReference Include="JetBrains.Profiler.Api" Version="[1.1.6,2.0.0)" />
     <PackageReference Condition="'$(TargetFramework)' == 'net46'" Include="Microsoft.NETFramework.ReferenceAssemblies.net46" Version="1.0.0" ExcludeAssets="All" PrivateAssets="All" />
     <Reference Condition="'$(TargetFramework)' == 'net46'" Include="System.IO.Compression" />
     <Reference Condition="'$(TargetFramework)' == 'net46'" Include="System.Net.Http" />
