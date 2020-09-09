@@ -5,6 +5,7 @@ using System.IO;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+using JetBrains.Profiler.Api;
 using JetBrains.Profiler.SelfApi.Impl;
 
 namespace JetBrains.Profiler.SelfApi
@@ -54,7 +55,6 @@ namespace JetBrains.Profiler.SelfApi
       internal bool IsOpenDotMemory;
       internal bool IsOverwriteWorkspace;
       internal string OtherArguments;
-      internal bool IsUseApi;
 
       /// <summary>
       /// Specifies the path to the workspace file (snapshots storage).
@@ -125,8 +125,9 @@ namespace JetBrains.Profiler.SelfApi
     }
 
     private const int Timeout = 30000;
-    private static readonly ConsoleToolRunner OurConsoleToolRunner = new ConsoleToolRunner(new Prerequisite());
-    private static readonly object OurMutex = new object();
+    private static readonly Prerequisite ConsoleRunnerPackage = new Prerequisite();
+    private static readonly object Mutex = new object();
+
     private static Session _session;
 
     /// <summary>
@@ -151,8 +152,8 @@ namespace JetBrains.Profiler.SelfApi
       NuGetApi nugetApi = NuGetApi.V3,
       string downloadTo = null)
     {
-      lock (OurMutex)
-        return OurConsoleToolRunner.EnsurePrerequisiteAsync(cancellationToken, progress, nugetUrl, nugetApi, downloadTo);
+      lock (Mutex)
+        return ConsoleRunnerPackage.DownloadAsync(nugetUrl, nugetApi, downloadTo, progress, cancellationToken);
     }
 
     /// <summary>
@@ -195,17 +196,14 @@ namespace JetBrains.Profiler.SelfApi
     {
       if (config == null) throw new ArgumentNullException(nameof(config));
 
-      lock (OurMutex)
+      lock (Mutex)
       {
-        OurConsoleToolRunner.AssertIfReady();
+        ConsoleRunnerPackage.VerifyReady();
 
         if (_session != null)
           throw new InvalidOperationException("The profiling session is active already: Attach() was called early.");
 
-        // `get-snapshot` command doesn't support API mode
-        config.IsUseApi = false;
-
-        return RunConsole("get-snapshot --raw", config).AwaitFinished(-1).WorkspaceFile;
+        return RunConsole("get-snapshot", config).AwaitFinished(-1).WorkspaceFile;
       }
     }
 
@@ -224,15 +222,17 @@ namespace JetBrains.Profiler.SelfApi
     {
       if (config == null)
         throw new ArgumentNullException(nameof(config));
+
       Helper.CheckAttachCompatibility();
-      lock (OurMutex)
+
+      lock (Mutex)
       {
-        OurConsoleToolRunner.AssertIfReady();
+        ConsoleRunnerPackage.VerifyReady();
 
         if (_session != null)
           throw new InvalidOperationException("The profiling session is active still: forgot to call Detach()?");
 
-        _session = RunConsole("attach -s", config).AwaitConnected(Timeout);
+        _session = RunConsole("attach", config).AwaitConnected(Timeout);
       }
     }
 
@@ -242,7 +242,7 @@ namespace JetBrains.Profiler.SelfApi
     /// <returns>Saved workspace file path.</returns>
     public static string Detach()
     {
-      lock (OurMutex)
+      lock (Mutex)
       {
         if (_session == null)
           throw new InvalidOperationException("The profiling session isn't active: forgot to call Attach()?");
@@ -264,7 +264,7 @@ namespace JetBrains.Profiler.SelfApi
     /// <param name="name">Optional snapshot name.</param>
     public static void GetSnapshot(string name = null)
     {
-      lock (OurMutex)
+      lock (Mutex)
       {
         if (_session == null)
           throw new InvalidOperationException("The profiling session isn't active: forgot to call Attach()?");
@@ -289,7 +289,7 @@ namespace JetBrains.Profiler.SelfApi
     {
       Trace.Verbose("DotMemory.RunConsole: Looking for runner...");
 
-      var runnerPath = OurConsoleToolRunner.GetRunner();
+      var runnerPath = ConsoleRunnerPackage.GetRunnerPath();
 
       var workspaceFile = GetSaveToFilePath(config);
 
@@ -309,19 +309,7 @@ namespace JetBrains.Profiler.SelfApi
       if (config.IsOpenDotMemory)
         commandLine.Append(" --open-dotmemory");
 
-      MemoryProfilerApi api;
-      if (config.IsUseApi)
-      {
-        Trace.Info("DotMemory.RunConsole: force to use API");
-        api = MemoryProfilerApi.Instance;
-      }
-      else
-      {
-        Trace.Info("DotMemory.RunConsole: force to do not use API");
-        api = null;
-      }
-
-      if (api != null)
+      if (command != "get-snapshot")
         commandLine.Append(" --use-api");
 
       if (config.OtherArguments != null)
@@ -329,11 +317,17 @@ namespace JetBrains.Profiler.SelfApi
 
       Trace.Info("DotMemory.RunConsole:\n  runner = `{0}`\n  arguments = `{1}`", runnerPath, commandLine);
 
-      var consoleProfiler = new ConsoleProfiler(runnerPath, commandLine.ToString(), MessageServicePrefix, CltPresentableName, api != null ? (Func<bool>) api.IsReady : null);
+      var consoleProfiler = new ConsoleProfiler(
+        runnerPath,
+        commandLine.ToString(),
+        MessageServicePrefix,
+        CltPresentableName,
+        () => (MemoryProfiler.GetFeatures() & MemoryFeatures.Ready) == MemoryFeatures.Ready
+        );
 
       Trace.Verbose("DotMemory.RunConsole: Runner started.");
 
-      return new Session(consoleProfiler, api, workspaceFile);
+      return new Session(consoleProfiler, workspaceFile);
     }
 
     private sealed class Prerequisite : PrerequisiteBase
@@ -366,13 +360,11 @@ namespace JetBrains.Profiler.SelfApi
 
     private sealed class Session
     {
-      private readonly MemoryProfilerApi _profilerApi;
       private readonly ConsoleProfiler _consoleProfiler;
 
-      public Session(ConsoleProfiler consoleProfiler, MemoryProfilerApi profilerApi, string workspaceFile)
+      public Session(ConsoleProfiler consoleProfiler, string workspaceFile)
       {
         _consoleProfiler = consoleProfiler;
-        _profilerApi = profilerApi;
 
         WorkspaceFile = workspaceFile;
       }
@@ -382,23 +374,14 @@ namespace JetBrains.Profiler.SelfApi
       [SuppressMessage("ReSharper", "MemberHidesStaticFromOuterClass")]
       public Session Detach()
       {
-        if (_profilerApi != null)
-          _profilerApi.Detach();
-        else
-          _consoleProfiler.Send("disconnect");
+        MemoryProfiler.Detach();
         return this;
       }
 
       [SuppressMessage("ReSharper", "MemberHidesStaticFromOuterClass")]
       public Session GetSnapshot(string name)
       {
-        if (_profilerApi != null)
-          _profilerApi.GetSnapshot(name);
-        else
-        {
-          _consoleProfiler.Send("get-snapshot", "name", name);
-          _consoleProfiler.AwaitResponse("snapshot-saved", -1);
-        }
+        MemoryProfiler.GetSnapshot(name);
         return this;
       }
 

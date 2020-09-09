@@ -9,6 +9,7 @@ using System.Text.RegularExpressions;
 using System.Threading;
 using System.IO.Compression;
 using System.Threading.Tasks;
+using JetBrains.Profiler.Api;
 using JetBrains.Profiler.SelfApi.Impl;
 
 namespace JetBrains.Profiler.SelfApi
@@ -94,8 +95,8 @@ namespace JetBrains.Profiler.SelfApi
     }
 
     private const int Timeout = 30000;
-    private static readonly ConsoleToolRunner OurConsoleToolRunner = new ConsoleToolRunner(new Prerequisite());
-    private static readonly object OurMutex = new object();
+    private static readonly Prerequisite ConsoleRunnerPackage = new Prerequisite();
+    private static readonly object Mutex = new object();
 
     private static Session _session;
     private static string[] _collectedSnapshots;
@@ -124,8 +125,8 @@ namespace JetBrains.Profiler.SelfApi
       NuGetApi nugetApi = NuGetApi.V3,
       string downloadTo = null)
     {
-      lock (OurMutex)
-        return OurConsoleToolRunner.EnsurePrerequisiteAsync(cancellationToken, progress, nugetUrl, nugetApi, downloadTo);
+      lock (Mutex)
+        return ConsoleRunnerPackage.DownloadAsync(nugetUrl, nugetApi, downloadTo, progress, cancellationToken);
     }
 
     /// <summary>
@@ -171,11 +172,13 @@ namespace JetBrains.Profiler.SelfApi
     {
       if (config == null)
         throw new ArgumentNullException(nameof(config));
+
       Helper.CheckAttachCompatibility();
       Helper.CheckSamplingCompatibility();
-      lock (OurMutex)
+
+      lock (Mutex)
       {
-        OurConsoleToolRunner.AssertIfReady();
+        ConsoleRunnerPackage.VerifyReady();
 
         if (_session != null)
           throw new InvalidOperationException("The profiling session is not active: Did you call Attach()?");
@@ -193,7 +196,7 @@ namespace JetBrains.Profiler.SelfApi
     /// </summary>
     public static void Detach()
     {
-      lock (OurMutex)
+      lock (Mutex)
       {
         if (_session == null)
           throw new InvalidOperationException("The profiling session is not active: Did you call Attach()?");
@@ -218,7 +221,7 @@ namespace JetBrains.Profiler.SelfApi
     /// <exception cref="InvalidOperationException"></exception>
     public static void StartCollectingData()
     {
-      lock (OurMutex)
+      lock (Mutex)
       {
         if (_session == null)
           throw new InvalidOperationException("The profiling session is not active: Did you call Attach()?");
@@ -235,7 +238,7 @@ namespace JetBrains.Profiler.SelfApi
     /// </summary>
     public static void SaveData()
     {
-      lock (OurMutex)
+      lock (Mutex)
       {
         if (_session == null)
           throw new InvalidOperationException("The profiling session is not active: Did you call Attach()?");
@@ -252,7 +255,7 @@ namespace JetBrains.Profiler.SelfApi
     /// </summary>
     public static void DropData()
     {
-      lock (OurMutex)
+      lock (Mutex)
       {
         if (_session == null)
           throw new InvalidOperationException("The profiling session is not active: Did you call Attach()?");
@@ -272,7 +275,7 @@ namespace JetBrains.Profiler.SelfApi
     /// <exception cref="InvalidOperationException"></exception>
     public static void StopCollectingData()
     {
-      lock (OurMutex)
+      lock (Mutex)
       {
         if (_session == null)
           throw new InvalidOperationException("The profiling session is not active: Did you call Attach()?");
@@ -302,7 +305,7 @@ namespace JetBrains.Profiler.SelfApi
     /// <exception cref="InvalidOperationException"></exception>
     public static string[] GetCollectedSnapshotIndexFiles()
     {
-      lock (OurMutex)
+      lock (Mutex)
         return GetCollectedSnapshotIndexFilesCore().Where(f => !_deletedIndexFiles.Contains(f)).ToArray();
     }
 
@@ -313,7 +316,7 @@ namespace JetBrains.Profiler.SelfApi
     /// <returns>Paths to snapshot files</returns>
     public static string[] GetCollectedSnapshotFiles()
     {
-      lock (OurMutex)
+      lock (Mutex)
         return GetCollectedSnapshotIndexFilesCore().Where(f => !_deletedIndexFiles.Contains(f)).SelectMany(GetSnapshotFiles).ToArray();
     }
 
@@ -324,7 +327,7 @@ namespace JetBrains.Profiler.SelfApi
     /// <returns>Path to the zip file. Returns null if data is not yet collected.</returns>
     public static string GetCollectedSnapshotFilesArchive(bool deleteUnpackedFiles)
     {
-      lock (OurMutex)
+      lock (Mutex)
       {
         var indexFiles = GetCollectedSnapshotIndexFilesCore();
         if (_packedInZipCount >= indexFiles.Length)
@@ -387,6 +390,7 @@ namespace JetBrains.Profiler.SelfApi
         if (!File.Exists(path) && !Directory.Exists(path))
           return path;
       }
+
       throw new IOException("Unable to create the archive file");
     }
 
@@ -394,7 +398,7 @@ namespace JetBrains.Profiler.SelfApi
     {
       Trace.Verbose("DotTrace.RunConsole: Looking for runner...");
 
-      var runnerPath = OurConsoleToolRunner.GetRunner();
+      var runnerPath = ConsoleRunnerPackage.GetRunnerPath();
 
       var commandLine = new StringBuilder();
 
@@ -418,12 +422,17 @@ namespace JetBrains.Profiler.SelfApi
       Trace.Info("DotTrace.RunConsole:\n  runner = `{0}`\n  arguments = `{1}`", runnerPath, commandLine);
 
       var collectedSnapshots = new CollectedSnapshots();
-      var api = MeasureProfilerApi.Instance;
-      var consoleProfiler = new ConsoleProfiler(runnerPath, commandLine.ToString(), MessageServicePrefix,
-        CltPresentableName, api.IsReady, collectedSnapshots);
+      var consoleProfiler = new ConsoleProfiler(
+        runnerPath,
+        commandLine.ToString(),
+        MessageServicePrefix,
+        CltPresentableName,
+        () => (MeasureProfiler.GetFeatures() & MeasureFeatures.Ready) == MeasureFeatures.Ready,
+        collectedSnapshots);
+
       Trace.Verbose("DotTrace.RunConsole: Runner started.");
 
-      return new Session(consoleProfiler, api, collectedSnapshots);
+      return new Session(consoleProfiler, collectedSnapshots);
     }
 
     private sealed class Prerequisite : PrerequisiteBase
@@ -456,28 +465,26 @@ namespace JetBrains.Profiler.SelfApi
 
     private sealed class Session
     {
-      private readonly MeasureProfilerApi _profilerApi;
       private readonly CollectedSnapshots _snapshots;
       private readonly ConsoleProfiler _consoleProfiler;
 
-      public Session(ConsoleProfiler consoleProfiler, MeasureProfilerApi profilerApi, CollectedSnapshots snapshots)
+      public Session(ConsoleProfiler consoleProfiler, CollectedSnapshots snapshots)
       {
         _consoleProfiler = consoleProfiler;
-        _profilerApi = profilerApi;
         _snapshots = snapshots;
       }
 
       [SuppressMessage("ReSharper", "MemberHidesStaticFromOuterClass")]
       public Session Detach()
       {
-        _profilerApi.Detach();
+        MeasureProfiler.Detach();
         return this;
       }
 
       [SuppressMessage("ReSharper", "MemberHidesStaticFromOuterClass")]
       public Session SaveData()
       {
-        _profilerApi.SaveData();
+        MeasureProfiler.SaveData();
         _consoleProfiler.AwaitResponse("(?:snapshot-saved|get-snapshot-error)", -1);
         return this;
       }
@@ -485,21 +492,21 @@ namespace JetBrains.Profiler.SelfApi
       [SuppressMessage("ReSharper", "MemberHidesStaticFromOuterClass")]
       public Session DropData()
       {
-        _profilerApi.DropData();
+        MeasureProfiler.DropData();
         return this;
       }
 
       [SuppressMessage("ReSharper", "MemberHidesStaticFromOuterClass")]
       public Session StartCollectingData()
       {
-        _profilerApi.Start();
+        MeasureProfiler.StartCollectingData();
         return this;
       }
 
       [SuppressMessage("ReSharper", "MemberHidesStaticFromOuterClass")]
       public Session StopCollectingData()
       {
-        _profilerApi.Stop();
+        MeasureProfiler.StopCollectingData();
         return this;
       }
 

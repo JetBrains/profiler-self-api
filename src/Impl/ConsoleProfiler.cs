@@ -183,22 +183,16 @@ namespace JetBrains.Profiler.SelfApi.Impl
 
     public void AwaitConnected(int milliseconds)
     {
-      if (!AwaitResponse("connected", milliseconds))
-        throw BuildException($"{_presentableName} was not connected. See details below.");
-
-      if (_isReady != null)
+      var startTime = DateTime.UtcNow;
+      while (!_isReady())
       {
-        var startTime = DateTime.UtcNow;
-        while (!_isReady())
-        {
-          if (_process.HasExited)
-            throw BuildException($"{_presentableName} has exited unexpectedly. See details below.");
+        if (_process.HasExited)
+          throw BuildException($"{_presentableName} has exited unexpectedly. See details below.");
 
-          if (milliseconds >= 0 && (DateTime.UtcNow - startTime).TotalMilliseconds > milliseconds)
-            throw BuildException("Profiler.Api was not ready in given time. See details below.");
+        if (milliseconds >= 0 && (DateTime.UtcNow - startTime).TotalMilliseconds > milliseconds)
+          throw BuildException("Profiler.Api was not ready in given time. See details below.");
 
-          Thread.Sleep(40);
-        }
+        Thread.Sleep(40);
       }
     }
   }
