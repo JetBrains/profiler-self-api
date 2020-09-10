@@ -20,8 +20,6 @@ namespace JetBrains.Profiler.SelfApi.Impl
     private readonly List<string> _outputLines = new List<string>();
     private readonly List<string> _errorLines = new List<string>();
     private readonly Func<bool> _isReady;
-    private readonly IResponseCommandProcessor _commandProcessor;
-    private readonly Regex _commandRegex;
     private int _firstOutputLineToProcess;
 
     public ConsoleProfiler(string executable, string arguments, string messageServicePrefix, string presentableName, Func<bool> isReady, IResponseCommandProcessor commandProcessor = null)
@@ -29,9 +27,8 @@ namespace JetBrains.Profiler.SelfApi.Impl
       _prefix = messageServicePrefix;
       _presentableName = presentableName;
       _isReady = isReady;
-      _commandProcessor = commandProcessor;
-      _commandRegex = BuildCommandRegex("([a-zA-Z-]*)", "(.*)");
 
+      var commandRegex = BuildCommandRegex("([a-zA-Z-]*)", "(.*)");
       var si = new ProcessStartInfo
         {
           FileName = executable,
@@ -50,12 +47,12 @@ namespace JetBrains.Profiler.SelfApi.Impl
             if (args.Data != null)
             {
               Trace.Verbose(args.Data);
-              if (_commandProcessor != null)
+              if (commandProcessor != null)
               {
-                var match = _commandRegex.Match(args.Data);
+                var match = commandRegex.Match(args.Data);
                 if (match.Success)
                 {
-                  _commandProcessor.ProcessCommand(match.Groups[1].Value.ToLower(), match.Groups[2].Value);
+                  commandProcessor.ProcessCommand(match.Groups[1].Value.ToLower(), match.Groups[2].Value);
                 }
               }
 

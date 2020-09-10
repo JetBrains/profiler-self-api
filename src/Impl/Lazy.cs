@@ -12,29 +12,29 @@ namespace JetBrains.Profiler.SelfApi.Impl
 
     #endregion
 
-    private readonly FuncDelegate myFunc;
-    private readonly object myFuncLock = new object();
-    private volatile int myHasValue;
-    private TValue myValue;
+    private readonly FuncDelegate _func;
+    private readonly object _funcLock = new object();
+    private volatile int _hasValue;
+    private TValue _value;
 
     public Lazy(FuncDelegate func)
     {
-      myFunc = func ?? throw new ArgumentNullException(nameof(func));
+      _func = func ?? throw new ArgumentNullException(nameof(func));
     }
 
     public TValue Value
     {
       get
       {
-        if (myHasValue == 0)
-          lock (myFuncLock)
-            if (myHasValue == 0)
+        if (_hasValue == 0)
+          lock (_funcLock)
+            if (_hasValue == 0)
             {
-              myValue = myFunc();
-              Interlocked.Increment(ref myHasValue);
+              _value = _func();
+              Interlocked.Increment(ref _hasValue);
             }
 
-        return myValue;
+        return _value;
       }
     }
   }

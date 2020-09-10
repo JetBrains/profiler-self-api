@@ -7,7 +7,7 @@ namespace JetBrains.Profiler.SelfApi.Impl
 {
   internal static partial class Helper
   {
-    private static readonly Lazy<Tuple<PlatformId, ArchitectureId>> ourUnixConfig = new Lazy<Tuple<PlatformId, ArchitectureId>>(DeduceUnixConfig);
+    private static readonly Lazy<Tuple<PlatformId, ArchitectureId>> UnixConfigLazy = new Lazy<Tuple<PlatformId, ArchitectureId>>(DeduceUnixConfig);
 
     private static PlatformId ToPlatformId(string sysname)
     {

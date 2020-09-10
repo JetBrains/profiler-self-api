@@ -6,21 +6,21 @@ namespace JetBrains.Profiler.SelfApi.Impl
 {
   internal static partial class Helper
   {
-    private static readonly Lazy<PlatformId> ourPlatform = new Lazy<PlatformId>(DeducePlatformId);
-    private static readonly Lazy<ArchitectureId> ourOsArchitecture = new Lazy<ArchitectureId>(DeduceOsArchitecture);
+    private static readonly Lazy<PlatformId> PlatformLazy = new Lazy<PlatformId>(DeducePlatformId);
+    private static readonly Lazy<ArchitectureId> OsArchitectureLazy = new Lazy<ArchitectureId>(DeduceOsArchitecture);
 
-    public static PlatformId Platform => ourPlatform.Value;
-    public static ArchitectureId OsArchitecture => ourOsArchitecture.Value;
+    public static PlatformId Platform => PlatformLazy.Value;
+    public static ArchitectureId OsArchitecture => OsArchitectureLazy.Value;
 
     public static void ChModExecutable(string path)
     {
-      if (ourPlatform.Value != PlatformId.Windows)
+      if (PlatformLazy.Value != PlatformId.Windows)
         UnixChMod(path, UnixFileModes.rwxr_xr_x);
     }
 
     public static void ChModNormal(string path)
     {
-      if (ourPlatform.Value != PlatformId.Windows)
+      if (PlatformLazy.Value != PlatformId.Windows)
         UnixChMod(path, UnixFileModes.rw_r__r__);
     }
 
@@ -31,7 +31,7 @@ namespace JetBrains.Profiler.SelfApi.Impl
 #elif NET20 || NET35 || NET40 || NET45 || NET451 || NET452 || NET46 || NET461 || NET462 || NET47
       switch (Environment.OSVersion.Platform)
       {
-      case PlatformID.Unix: return ourUnixConfig.Value.Item1;
+      case PlatformID.Unix: return UnixConfigLazy.Value.Item1;
       case PlatformID.Win32NT: return PlatformId.Windows;
       }
 #else
@@ -49,7 +49,7 @@ namespace JetBrains.Profiler.SelfApi.Impl
 #elif NET20 || NET35 || NET40 || NET45 || NET451 || NET452 || NET46 || NET461 || NET462 || NET47
       switch (Environment.OSVersion.Platform)
       {
-      case PlatformID.Unix: return ourUnixConfig.Value.Item2;
+      case PlatformID.Unix: return UnixConfigLazy.Value.Item2;
       case PlatformID.Win32NT: return Environment.Is64BitOperatingSystem ? ArchitectureId.X64 : ArchitectureId.X86;
       default:
         throw new PlatformNotSupportedException();
@@ -91,7 +91,7 @@ namespace JetBrains.Profiler.SelfApi.Impl
     {
       // Note: This condition will not work on .NET Core 1.x/2.x because Environment.Version is incorrect.
       // Note: We also exclude .NET Core 3.x on macOS because the attach feature is not implemented in it. 
-      if (ourPlatform.Value == PlatformId.MacOs && Environment.Version.Major == 3)
+      if (PlatformLazy.Value == PlatformId.MacOs && Environment.Version.Major == 3)
         throw new Exception("The self-profiling API is supported only on .NET 5.0 or later");
     }
 
@@ -99,7 +99,7 @@ namespace JetBrains.Profiler.SelfApi.Impl
     {
       // Note: This condition will not work on .NET Core 1.x/2.x because Environment.Version is incorrect.
       // Note: We also exclude .NET Core 3.0 on Unix because the synchronous sampling is not implemented in it. 
-      if ((ourPlatform.Value == PlatformId.Linux || ourPlatform.Value == PlatformId.MacOs) && Environment.Version.Major == 3 && Environment.Version.Minor == 0)
+      if ((PlatformLazy.Value == PlatformId.Linux || PlatformLazy.Value == PlatformId.MacOs) && Environment.Version.Major == 3 && Environment.Version.Minor == 0)
         throw new Exception("The self-profiling API is supported only on .NET Core 3.1 or later");
     }
   }
