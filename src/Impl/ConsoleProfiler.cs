@@ -145,6 +145,7 @@ namespace JetBrains.Profiler.SelfApi.Impl
           if (i > 0)
             messageBuilder.Append(",");
         }
+
         messageBuilder.Append("}");
       }
 

@@ -33,6 +33,7 @@ namespace JetBrains.Profiler.SelfApi.Impl
               myValue = myFunc();
               Interlocked.Increment(ref myHasValue);
             }
+
         return myValue;
       }
     }

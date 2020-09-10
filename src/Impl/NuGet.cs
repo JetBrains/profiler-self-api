@@ -373,11 +373,9 @@ namespace JetBrains.Profiler.SelfApi.Impl
       [DataContract]
       private sealed class ServiceIndex
       {
-        [DataMember(Name = "version")]
-        public string Version;
+        [DataMember(Name = "version")] public string Version;
 
-        [DataMember(Name = "resources")]
-        public Resource[] Resources;
+        [DataMember(Name = "resources")] public Resource[] Resources;
 
         public Uri GetResourceUrl(string resourceType)
         {
@@ -392,18 +390,15 @@ namespace JetBrains.Profiler.SelfApi.Impl
       [DataContract]
       private sealed class Resource
       {
-        [DataMember(Name = "@id")]
-        public string Id;
+        [DataMember(Name = "@id")] public string Id;
 
-        [DataMember(Name = "@type")]
-        public string Type;
+        [DataMember(Name = "@type")] public string Type;
       }
 
       [DataContract]
       private sealed class PackageIndex
       {
-        [DataMember(Name = "versions")]
-        public string[] Versions;
+        [DataMember(Name = "versions")] public string[] Versions;
 
         public string GetLatestVersion(SemanticVersion packageVersion)
         {

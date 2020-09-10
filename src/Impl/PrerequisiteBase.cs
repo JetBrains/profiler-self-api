@@ -13,7 +13,7 @@ namespace JetBrains.Profiler.SelfApi.Impl
   {
     public readonly string Name;
     public readonly NuGet.SemanticVersion SemanticVersion;
-    
+
     private Task _downloadTask;
     private string _downloadTo;
 
@@ -35,7 +35,7 @@ namespace JetBrains.Profiler.SelfApi.Impl
         Trace.Verbose($"Prerequisite[{Name}].DownloadAsync: Task already running.");
         return _downloadTask;
       }
-      
+
       _downloadTask = null;
       _downloadTo = downloadTo;
 
@@ -51,20 +51,20 @@ namespace JetBrains.Profiler.SelfApi.Impl
       Trace.Verbose($"Prerequisite[{Name}].DownloadAsync: Runner not found, starting download...");
       return _downloadTask = DoDownloadAsync(nugetUrl, nugetApi, downloadTo, progress, cancellationToken);
     }
-    
+
     public void VerifyReady()
     {
       if (_downloadTask == null || !_downloadTask.Wait(40))
         throw new InvalidOperationException("The prerequisite isn't ready, call DownloadAsync() first.");
     }
-    
+
     public string GetRunnerPath()
     {
       VerifyReady();
-      
+
       if (!TryGetRunner(_downloadTo, out var runnerPath))
         throw new InvalidOperationException($"Something went wrong: the {Name} console profiler not found.");
-      
+
       return runnerPath;
     }
 
@@ -77,13 +77,13 @@ namespace JetBrains.Profiler.SelfApi.Impl
     {
       const double downloadWeigth = 0.8;
       const double unzipWeigth = 0.2;
-      
+
       try
       {
         downloadTo = string.IsNullOrEmpty(downloadTo)
           ? GetAppLocalPath()
           : Path.Combine(downloadTo, $"{Name}.{SemanticVersion}");
-        
+
         Trace.Info("Prerequisite.Download: targetPath = `{0}`", downloadTo);
         Directory.CreateDirectory(downloadTo);
 
@@ -157,6 +157,7 @@ namespace JetBrains.Profiler.SelfApi.Impl
               Trace.Verbose("Setting up executable bit for {0}...", dstPath);
               Helper.ChModExecutable(dstPath);
             }
+
             subStart += subStep;
           }
         }
@@ -169,14 +170,14 @@ namespace JetBrains.Profiler.SelfApi.Impl
         throw new Exception(
           $"Failed to download prerequisite package. Please, check the NuGet URL and Internet connection.\n[{nugetUrl}]",
           e
-        );
+          );
       }
       catch (IOException e)
       {
         throw new Exception(
           $"Failed to save/unpack prerequisite package. Please, check the path and available disk space.\n[{downloadTo}]",
           e
-        );
+          );
       }
     }
 
