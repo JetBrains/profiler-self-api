@@ -51,6 +51,13 @@ namespace JetBrains.Profiler.SelfApi
       internal string SnapshotFile;
       internal string SnapshotDir;
       internal bool IsOverwriteSnapshot;
+      internal ProfilingType Type;
+
+      internal enum ProfilingType
+      {
+        Sampling,
+        Timeline
+      }
 
       /// <summary>
       /// Specifies the path to the snapshot index file.
@@ -90,6 +97,19 @@ namespace JetBrains.Profiler.SelfApi
 
         SnapshotDir = dirPath;
 
+        return this;
+      }
+
+      /// <summary>
+      /// (Windows only) Use the Timeline profiling type. 
+      /// If not specified, the Sampling type is used.
+      /// </summary>
+      /// <returns></returns>
+      public Config UseTimelineProfilingType()
+      {
+        if (Helper.Platform != PlatformId.Windows)
+          throw new InvalidOperationException("The Timeline profiling type is supported only on Windows platform");
+        Type = ProfilingType.Timeline;
         return this;
       }
     }
@@ -403,6 +423,7 @@ namespace JetBrains.Profiler.SelfApi
       var commandLine = new StringBuilder();
 
       commandLine.Append($"attach {Process.GetCurrentProcess().Id}");
+      commandLine.Append($" --profiling-type={config.Type}");
       commandLine.Append(" --service-input=stdin --service-output=On");
       commandLine.Append(" --collect-data-from-start=Off");
       commandLine.Append(" --use-api");
