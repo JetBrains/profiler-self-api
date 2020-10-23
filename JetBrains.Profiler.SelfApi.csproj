@@ -14,15 +14,15 @@
 
 ATTENTION: Note that for its work JetBrains Self-Profiling API uses the JetBrains.dotMemory.Console and JetBrains.dotTrace.CommandLineTools packages which is distributed under the JetBrains Redistributable Product license: The library is free and can be freely redistributed but disassembling is not allowed.
 </Description>
-    <PackageReleaseNotes>• JetBrains dotTrace and dotMemory are fully supported
-• Supported OSs: Windows 7 and later, macOS 10.12 Sierra and later, Linux (most desktop distributions like CentOS, Debian, Fedora, Ubuntu and derivatives)
-• Supported frameworks: .NET Framework 4.6.1 and later, .NET Core 3.0 and later</PackageReleaseNotes>
+    <PackageReleaseNotes>• Supported OSs: Windows 7 and later, macOS 10.12 Sierra and later, Linux (most desktop distributions like CentOS, Debian, Fedora, Ubuntu and derivatives)
+• Supported frameworks: .NET Framework 4.6.1 and later, .NET Core 3.0 and later, .NET 5.0 and later
+• Support for the Timeline profiling type on Windows</PackageReleaseNotes>
     <RepositoryUrl>https://github.com/JetBrains/profiler-self-api</RepositoryUrl>    
     <PackageProjectUrl>https://github.com/JetBrains/profiler-self-api/blob/master/README.md</PackageProjectUrl>
     <PackageIconUrl>https://resources.jetbrains.com/storage/products/resharper/img/icons/ProfilerSelfApi_128.png</PackageIconUrl>
     <PackageIcon>icon.png</PackageIcon>
     <PackageTags>jetbrains profiler profiling memory performance net dotnet netcore dotnetcore netstandard windows uwp macos mac linux</PackageTags>
-    <Version>2.0.3-preview1</Version>
+    <Version>2.1.0-preview1</Version>
   </PropertyGroup>
   <ItemGroup>
     <None Include="icon.png" Pack="true" PackagePath="\" />
