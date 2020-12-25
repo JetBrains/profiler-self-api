@@ -6,5 +6,6 @@
   public abstract class CommonConfig
   {
     internal string LogFile;
+    internal string OtherArguments;
   }
 }

@@ -54,7 +54,6 @@ namespace JetBrains.Profiler.SelfApi
       internal string WorkspaceDir;
       internal bool IsOpenDotMemory;
       internal bool IsOverwriteWorkspace;
-      internal string OtherArguments;
 
       /// <summary>
       /// Specifies the path to the workspace file (snapshots storage).
@@ -105,21 +104,6 @@ namespace JetBrains.Profiler.SelfApi
       public Config UseLogLevelVerbose()
       {
         LogLevel = "Verbose";
-        return this;
-      }
-
-      /// <summary>
-      /// Appends an arbitrary argument to the command line as is (without any quoting, and so on).
-      /// </summary>
-      public Config WithCommandLineArgument(string argument)
-      {
-        if (argument == null) throw new ArgumentNullException(nameof(argument));
-
-        if (OtherArguments != null)
-          OtherArguments += " " + argument;
-        else
-          OtherArguments = argument;
-
         return this;
       }
     }

@@ -19,5 +19,22 @@ namespace JetBrains.Profiler.SelfApi
       config.LogFile = filePath ?? throw new ArgumentNullException(nameof(filePath));
       return config;
     }
+
+    /// <summary>
+    /// Appends an arbitrary argument to the command line as is (without any quoting, and so on).
+    /// </summary>
+    public static T WithCommandLineArgument<T>(this T config, string argument)
+      where T : CommonConfig
+    {
+      if (argument == null) throw new ArgumentNullException(nameof(argument));
+
+      if (config.OtherArguments != null)
+        config.OtherArguments += " " + argument;
+      else
+        config.OtherArguments = argument;
+
+      return config;
+    }
+    
   }
 }

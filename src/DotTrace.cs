@@ -440,6 +440,9 @@ namespace JetBrains.Profiler.SelfApi
       if (config.SnapshotFile != null)
         commandLine.Append($" --save-to={config.SnapshotFile}");
 
+      if (config.OtherArguments != null)
+        commandLine.Append(' ').Append(config.OtherArguments);
+
       Trace.Info("DotTrace.RunConsole:\n  runner = `{0}`\n  arguments = `{1}`", runnerPath, commandLine);
 
       var collectedSnapshots = new CollectedSnapshots();
