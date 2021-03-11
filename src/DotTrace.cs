@@ -41,7 +41,7 @@ namespace JetBrains.Profiler.SelfApi
     /// <summary>
     /// The version of JetBrains.dotTrace.Console NuGet-package that must be downloaded.
     /// </summary>
-    private static readonly NuGet.SemanticVersion NupkgVersion = new NuGet.SemanticVersion(2020, 3);
+    private static readonly NuGet.SemanticVersion NupkgVersion = new NuGet.SemanticVersion(2021, 1);
 
     /// <summary>
     /// Self-profiling configuration
@@ -470,7 +470,7 @@ namespace JetBrains.Profiler.SelfApi
         switch (Helper.Platform)
         {
         case PlatformId.Linux:
-        case PlatformId.MacOs: return "dotTrace.sh";
+        case PlatformId.MacOs: return "dottrace";
         case PlatformId.Windows: return "ConsoleProfiler.exe";
         default: throw new ArgumentOutOfRangeException();
         }

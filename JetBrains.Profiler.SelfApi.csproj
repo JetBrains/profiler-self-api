@@ -8,7 +8,7 @@
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
     <PackageLicenseExpression>Apache-2.0</PackageLicenseExpression>
     <Company>JetBrains s.r.o.</Company>
-    <Copyright>Copyright © 2019-2020 JetBrains s.r.o.</Copyright>
+    <Copyright>Copyright © 2019-2021 JetBrains s.r.o.</Copyright>
     <Authors>Mikhail Pilin, Ilya Ivanov, Kirill Ponimash</Authors>
     <Description>JetBrains Self-Profiling API lets you initiate and control profiling sessions right from the code of your application. The snapshots taken by the API calls can be later opened and investigated in JetBrains profiling tools. The main advantage of Self-Profiling API is that it doesn't require the profiling tools to be installed on the end-user machine. For example, you can use this API to take memory snapshots of your application on end-user desktops, staging and production servers, and so on.
 
@@ -22,7 +22,7 @@ ATTENTION: Note that for its work JetBrains Self-Profiling API uses the JetBrain
     <PackageIconUrl>https://resources.jetbrains.com/storage/products/resharper/img/icons/ProfilerSelfApi_128.png</PackageIconUrl>
     <PackageIcon>icon.png</PackageIcon>
     <PackageTags>jetbrains profiler profiling memory performance net dotnet netcore dotnetcore netstandard windows uwp macos mac linux</PackageTags>
-    <Version>2.1.1</Version>
+    <Version>2.1.2-preview2</Version>
   </PropertyGroup>
   <ItemGroup>
     <None Include="icon.png" Pack="true" PackagePath="\" />

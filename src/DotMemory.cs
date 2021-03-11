@@ -42,7 +42,7 @@ namespace JetBrains.Profiler.SelfApi
     /// <summary>
     /// The version of JetBrains.dotMemory.Console NuGet-package that must be downloaded.
     /// </summary>
-    private static readonly NuGet.SemanticVersion NupkgVersion = new NuGet.SemanticVersion(2020, 3);
+    private static readonly NuGet.SemanticVersion NupkgVersion = new NuGet.SemanticVersion(2021, 1);
 
     /// <summary>
     /// Self-profiling configuration
@@ -118,10 +118,11 @@ namespace JetBrains.Profiler.SelfApi
     /// Makes sure that the dotMemory.exe command-line profiler is downloaded and is ready to use.
     /// </summary>
     /// <remarks>
-    /// 1. Looks for `dotMemory.exe` in the same folder with the running assembly. Uses it if it's found.<br/>
-    /// 2. Downloads `JetBrains.dotMemory.Console` NuGet package into the <paramref name="downloadTo"/>
-    /// folder and uses the dotMemory.exe command-line profiler from this package. The package version is defined by <see cref="NupkgVersion"/>.
-    /// The command-line profiler is saved to `{downloadTo}/dotMemory.{NupkgVersion}/dotMemory.exe`
+    /// 1. Looks for command-line profiler in the <paramref name="downloadTo"/> folder (if specified). Uses it if it's found.<br/>
+    /// 2. Looks for command-line profiler in the same folder with the running assembly. Uses it if it's found.<br/>
+    /// 3. Downloads the latest `JetBrains.dotMemory.Console` NuGet package into the <paramref name="downloadTo"/>
+    /// folder and uses the command-line profiler from this package. The basic package version is defined by <see cref="NupkgVersion"/>.
+    /// The command-line profiler is saved to `{downloadTo}/dotMemory/{Version}/dotMemory.exe`
     /// If the file exists, a new one is not downloaded.
     /// </remarks>
     /// <param name="cancellationToken">Cancellation token</param>
@@ -325,7 +326,7 @@ namespace JetBrains.Profiler.SelfApi
         switch (Helper.Platform)
         {
         case PlatformId.Linux:
-        case PlatformId.MacOs: return "dotMemory.sh";
+        case PlatformId.MacOs: return "dotmemory";
         case PlatformId.Windows: return "dotMemory.exe";
         default: throw new ArgumentOutOfRangeException();
         }

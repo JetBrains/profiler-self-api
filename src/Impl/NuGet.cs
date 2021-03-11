@@ -190,6 +190,8 @@ namespace JetBrains.Profiler.SelfApi.Impl
 
         response.EnsureSuccessStatusCode();
 
+        response.Content.Headers.Add("Version", latestEntry.Version.ToString());
+        
         return response.Content;
       }
 
@@ -327,7 +329,9 @@ namespace JetBrains.Profiler.SelfApi.Impl
           .ConfigureAwait(false);
 
         response.EnsureSuccessStatusCode();
-
+        
+        response.Content.Headers.Add("Version", latestVersion);
+        
         return response.Content;
       }
 
