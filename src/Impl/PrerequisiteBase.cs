@@ -88,7 +88,7 @@ namespace JetBrains.Profiler.SelfApi.Impl
 
         var nupkgName = GetPackageName() + "." + Helper.Platform.ToFolderName() + "-" + Helper.OsArchitecture.ToFolderName();
         string nupkgFolder, nupkgPath;
-        
+
         using (var http = new HttpClient())
         {
           Trace.Verbose("Prerequisite.Download: Requesting...");
@@ -103,10 +103,10 @@ namespace JetBrains.Profiler.SelfApi.Impl
             Trace.Verbose("Prerequisite.Download: Package version `{0}` already downloaded.", latestVersion);
             return;
           }
-          
+
           Directory.CreateDirectory(nupkgFolder);
           nupkgPath = Path.Combine(nupkgFolder, $"{nupkgName}.{latestVersion}.nupkg");
-          
+
           Trace.Verbose("Prerequisite.Download: Saving...");
           using (var input = await content.ReadAsStreamAsync().ConfigureAwait(false))
           using (var output = File.Create(nupkgPath))
@@ -211,7 +211,7 @@ namespace JetBrains.Profiler.SelfApi.Impl
       Trace.Verbose("Prerequisite.TryGetRunner: No runner found.");
       return false;
     }
-    
+
     private bool TryGetRunnerEx(string prerequisitePath, out string runnerPath)
     {
       runnerPath = null;
@@ -222,7 +222,7 @@ namespace JetBrains.Profiler.SelfApi.Impl
         prerequisitePath = GetDefaultDownloadPath();
 
       prerequisitePath = Path.Combine(prerequisitePath, Name);
-      
+
       Trace.Verbose("Prerequisite.TryGetRunnerEx: Looking for latest version at `{0}`...", prerequisitePath);
 
       if (!Directory.Exists(prerequisitePath))
@@ -238,7 +238,7 @@ namespace JetBrains.Profiler.SelfApi.Impl
       {
         var sVer = Path.GetFileName(versionFolder);
         Trace.Verbose("Prerequisite.TryGetRunnerEx:   {0}", sVer);
-        
+
         var ver = NuGet.SemanticVersion.TryParse(sVer);
         if (ver == null || ver.Version2 != packageVersion2)
           continue;

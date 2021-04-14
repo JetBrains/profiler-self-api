@@ -35,6 +35,5 @@ namespace JetBrains.Profiler.SelfApi
 
       return config;
     }
-    
   }
 }

@@ -41,7 +41,7 @@ namespace JetBrains.Profiler.SelfApi
     /// <summary>
     /// The version of JetBrains.dotTrace.Console NuGet-package that must be downloaded.
     /// </summary>
-    private static readonly NuGet.SemanticVersion NupkgVersion = new NuGet.SemanticVersion(2021, 1);
+    private static readonly NuGet.SemanticVersion NupkgVersion = new NuGet.SemanticVersion(2021, 2);
 
     /// <summary>
     /// Self-profiling configuration
