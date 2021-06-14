@@ -14,21 +14,20 @@
 
 ATTENTION: Note that for its work JetBrains Self-Profiling API uses the JetBrains.dotMemory.Console and JetBrains.dotTrace.CommandLineTools packages which is distributed under the JetBrains Redistributable Product license: The library is free and can be freely redistributed but disassembling is not allowed.
 </Description>
-    <PackageReleaseNotes>• Supported OSs: Windows 7 and later, macOS 10.12 Sierra and later, Linux (most desktop distributions like CentOS, Debian, Fedora, Ubuntu and derivatives)
-• Supported frameworks: .NET Framework 4.6.1 and later, .NET Core 3.0 and later, .NET 5.0 and later
-• Support for the Timeline profiling type on Windows</PackageReleaseNotes>
+    <PackageReleaseNotes>• Supported OSs: Windows 7 x86/x64 and later, macOS 10.12 Sierra - 10.15 Catalina x64, macOS 11.0 Big Sur x64/arm64 and later, Linux x64/arm64 (most desktop distributions like CentOS, Debian, Fedora, Ubuntu and derivatives)
+• Supported frameworks: .NET Framework 4.6.1 and later, .NET Core 3.0 and later, .NET 5.0 and later</PackageReleaseNotes>
     <RepositoryUrl>https://github.com/JetBrains/profiler-self-api</RepositoryUrl>    
     <PackageProjectUrl>https://github.com/JetBrains/profiler-self-api/blob/master/README.md</PackageProjectUrl>
     <PackageIconUrl>https://resources.jetbrains.com/storage/products/resharper/img/icons/ProfilerSelfApi_128.png</PackageIconUrl>
     <PackageIcon>icon.png</PackageIcon>
-    <PackageTags>jetbrains profiler profiling memory performance net dotnet netcore dotnetcore netstandard windows uwp macos mac linux</PackageTags>
-    <Version>2.1.2-preview4</Version>
+    <PackageTags>jetbrains profiler profiling memory performance net dotnet netcore dotnetcore netstandard windows uwp macos mac linux x86 x64 arm64 x86-64 x86_64 aarch64</PackageTags>
+    <Version>2.1.2-preview5</Version>
   </PropertyGroup>
   <ItemGroup>
     <None Include="icon.png" Pack="true" PackagePath="\" />
   </ItemGroup>
   <ItemGroup>
-    <PackageReference Include="JetBrains.Profiler.Api" Version="1.1.7" />
+    <PackageReference Include="JetBrains.Profiler.Api" Version="1.1.8" />
     <PackageReference Include="Microsoft.NETFramework.ReferenceAssemblies" Version="1.0.0" PrivateAssets="All" />
     <Reference Condition="'$(TargetFramework)' == 'net46'" Include="System.IO.Compression" />
     <Reference Condition="'$(TargetFramework)' == 'net46'" Include="System.Net.Http" />
