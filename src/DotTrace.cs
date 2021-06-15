@@ -429,16 +429,16 @@ namespace JetBrains.Profiler.SelfApi
       commandLine.Append(" --use-api");
 
       if (config.LogFile != null)
-        commandLine.Append($" --log-file=\"{config.LogFile}\" --debug-logging");
+        commandLine.Append($" \"--log-file={config.LogFile}\" --debug-logging");
 
       if (config.IsOverwriteSnapshot)
         commandLine.Append(" --overwrite");
 
       if (config.SnapshotDir != null)
-        commandLine.Append($" --save-to={config.SnapshotDir}");
+        commandLine.Append($" \"--save-to={config.SnapshotDir}\"");
 
       if (config.SnapshotFile != null)
-        commandLine.Append($" --save-to={config.SnapshotFile}");
+        commandLine.Append($" \"--save-to={config.SnapshotFile}\"");
 
       if (config.OtherArguments != null)
         commandLine.Append(' ').Append(config.OtherArguments);
