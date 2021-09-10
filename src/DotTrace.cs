@@ -41,7 +41,7 @@ namespace JetBrains.Profiler.SelfApi
     /// <summary>
     /// The version of JetBrains.dotTrace.Console NuGet-package that must be downloaded.
     /// </summary>
-    private static readonly NuGet.SemanticVersion NupkgVersion = new NuGet.SemanticVersion(2021, 2);
+    private static readonly NuGet.SemanticVersion NupkgVersion = new NuGet.SemanticVersion(2021, 3);
 
     /// <summary>
     /// Self-profiling configuration
@@ -52,6 +52,7 @@ namespace JetBrains.Profiler.SelfApi
       internal string SnapshotDir;
       internal bool IsOverwriteSnapshot;
       internal ProfilingType Type;
+      internal bool AskUacElevationIfRequired;
 
       internal enum ProfilingType
       {
@@ -99,17 +100,18 @@ namespace JetBrains.Profiler.SelfApi
 
         return this;
       }
-
       /// <summary>
       /// (Windows only) Use the Timeline profiling type. 
       /// If not specified, the Sampling type is used.
       /// </summary>
+      /// <param name="askUacElevationIfRequired">If false and a profiling session requires administrative privileges, the method throws an exception. If true, dotTrace will ask for UAC elevation and continue the session.</param>
       /// <returns></returns>
-      public Config UseTimelineProfilingType()
+      public Config UseTimelineProfilingType(bool askUacElevationIfRequired = false)
       {
         if (Helper.Platform != PlatformId.Windows)
           throw new InvalidOperationException("The Timeline profiling type is supported only on Windows platform");
         Type = ProfilingType.Timeline;
+        AskUacElevationIfRequired = askUacElevationIfRequired;
         return this;
       }
     }
@@ -439,6 +441,9 @@ namespace JetBrains.Profiler.SelfApi
 
       if (config.SnapshotFile != null)
         commandLine.Append($" \"--save-to={config.SnapshotFile}\"");
+
+      if (config.AskUacElevationIfRequired && config.Type == Config.ProfilingType.Timeline)
+        commandLine.Append(" --ask-uac-elevation");
 
       if (config.OtherArguments != null)
         commandLine.Append(' ').Append(config.OtherArguments);
