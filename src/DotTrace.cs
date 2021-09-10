@@ -201,7 +201,7 @@ namespace JetBrains.Profiler.SelfApi
         ConsoleRunnerPackage.VerifyReady();
 
         if (_session != null)
-          throw new InvalidOperationException("The profiling session is not active: Did you call Attach()?");
+          throw new InvalidOperationException("The profiling session is active still: forgot to call Detach()?");
 
         _collectedSnapshots = null;
         _deletedIndexFiles = new HashSet<string>();
