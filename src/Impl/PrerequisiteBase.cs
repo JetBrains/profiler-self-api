@@ -87,7 +87,7 @@ namespace JetBrains.Profiler.SelfApi.Impl
         Directory.CreateDirectory(downloadTo);
 
         var nupkgName = GetPackageName() + "." + Helper.Platform.ToFolderName() + "-" + Helper.OsArchitecture.ToFolderName();
-        string nupkgFolder, nupkgPath;
+        string nupkgFolder, nupkgPath, readyMarker;
 
         using (var http = new HttpClient())
         {
@@ -98,7 +98,9 @@ namespace JetBrains.Profiler.SelfApi.Impl
 
           var latestVersion = content.Headers.GetValues("Version").Single();
           nupkgFolder = Path.Combine(downloadTo, Name, latestVersion);
-          if (Directory.Exists(nupkgFolder))
+          readyMarker = Path.Combine(nupkgFolder, ".ready");
+
+          if (File.Exists(readyMarker))
           {
             Trace.Verbose("Prerequisite.Download: Package version `{0}` already downloaded.", latestVersion);
             return;
@@ -174,6 +176,9 @@ namespace JetBrains.Profiler.SelfApi.Impl
 
         Trace.Verbose("Prerequisite.Download: Cleaning up...");
         File.Delete(nupkgPath);
+
+        new FileStream(readyMarker, FileMode.Create).Dispose();
+        Trace.Verbose("Prerequisite.Download: Confirmed everything ready to use.");
       }
       catch (HttpRequestException e)
       {
