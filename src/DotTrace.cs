@@ -39,11 +39,6 @@ namespace JetBrains.Profiler.SelfApi
     private const string CltPresentableName = "dotTrace console profiler";
 
     /// <summary>
-    /// The version of JetBrains.dotTrace.Console NuGet-package that must be downloaded.
-    /// </summary>
-    private static readonly NuGet.SemanticVersion NupkgVersion = new NuGet.SemanticVersion(2021, 3);
-
-    /// <summary>
     /// Self-profiling configuration
     /// </summary>
     public sealed class Config : CommonConfig
@@ -466,7 +461,7 @@ namespace JetBrains.Profiler.SelfApi
 
     private sealed class Prerequisite : PrerequisiteBase
     {
-      public Prerequisite() : base("dotTrace", NupkgVersion)
+      public Prerequisite() : base("dotTrace", CommandLineToolsConfig.NupkgVersion)
       {
       }
 

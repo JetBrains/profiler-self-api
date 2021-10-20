@@ -40,11 +40,6 @@ namespace JetBrains.Profiler.SelfApi
     private const string CltPresentableName = "dotMemory console profiler";
 
     /// <summary>
-    /// The version of JetBrains.dotMemory.Console NuGet-package that must be downloaded.
-    /// </summary>
-    private static readonly NuGet.SemanticVersion NupkgVersion = new NuGet.SemanticVersion(2021, 2);
-
-    /// <summary>
     /// Self-profiling configuration
     /// </summary>
     public sealed class Config : CommonConfig
@@ -317,7 +312,7 @@ namespace JetBrains.Profiler.SelfApi
 
     private sealed class Prerequisite : PrerequisiteBase
     {
-      public Prerequisite() : base("dotMemory", NupkgVersion)
+      public Prerequisite() : base("dotMemory", CommandLineToolsConfig.NupkgVersion)
       {
       }
 
