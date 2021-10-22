@@ -58,7 +58,7 @@ namespace JetBrains.Profiler.SelfApi
       /// <summary>
       /// Specifies the path to the snapshot index file.
       /// If you take more than one snapshot, the first snapshot will get the specified file name.
-      /// Others will additionally get the suffix "-[snapshot-number]". 
+      /// Others will additionally get the suffix "-[snapshot-number]".
       /// The directory specified in the path must already exist.
       /// <param name="snapshotFile">Path to the file</param>
       /// <param name="overwrite">Overwrite the file if it exists</param>
@@ -96,7 +96,7 @@ namespace JetBrains.Profiler.SelfApi
         return this;
       }
       /// <summary>
-      /// (Windows only) Use the Timeline profiling type. 
+      /// (Windows only) Use the Timeline profiling type.
       /// If not specified, the Sampling type is used.
       /// </summary>
       /// <param name="askUacElevationIfRequired">If false and a profiling session requires administrative privileges, the method throws an exception. If true, dotTrace will ask for UAC elevation and continue the session.</param>
@@ -126,7 +126,7 @@ namespace JetBrains.Profiler.SelfApi
     /// <remarks>
     /// 1. Looks for dotTrace executable in the same directory with the running assembly. Uses it if it's found.<br/>
     /// 2. Downloads `JetBrains.dotTrace.CommandLineTools` NuGet package into the <paramref name="downloadTo"/>
-    /// directory and uses the dotTrace command-line profiler from this package. The package version is defined by <see cref="NupkgVersion"/>.
+    /// directory and uses the dotTrace command-line profiler from this package. The package version is defined by <see cref="CommandLineToolsConfig.NupkgVersion"/>.
     /// The command-line profiler is saved to `{downloadTo}/dotTrace.{NupkgVersion}`
     /// If the executable file exists, a new one is not downloaded.
     /// </remarks>
@@ -251,7 +251,7 @@ namespace JetBrains.Profiler.SelfApi
     /// Takes a snapshot of the current process
     /// All collected data is saved to files specified in the configuration
     /// Note: After saving the data, profiler goes to "Stopped" state
-    /// To start collecting data again, call <see cref="StartCollectingData"/> 
+    /// To start collecting data again, call <see cref="StartCollectingData"/>
     /// </summary>
     public static void SaveData()
     {
@@ -266,9 +266,9 @@ namespace JetBrains.Profiler.SelfApi
 
     /// <summary>
     /// Drops collected data
-    /// Run this method to discard collected data. 
+    /// Run this method to discard collected data.
     /// Note: After discarding the data, profiler goes to "Stopped" state
-    /// To start collecting data again, call <see cref="StartCollectingData"/> 
+    /// To start collecting data again, call <see cref="StartCollectingData"/>
     /// </summary>
     public static void DropData()
     {

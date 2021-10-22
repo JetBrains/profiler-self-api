@@ -116,7 +116,7 @@ namespace JetBrains.Profiler.SelfApi
     /// 1. Looks for command-line profiler in the <paramref name="downloadTo"/> folder (if specified). Uses it if it's found.<br/>
     /// 2. Looks for command-line profiler in the same folder with the running assembly. Uses it if it's found.<br/>
     /// 3. Downloads the latest `JetBrains.dotMemory.Console` NuGet package into the <paramref name="downloadTo"/>
-    /// folder and uses the command-line profiler from this package. The basic package version is defined by <see cref="NupkgVersion"/>.
+    /// folder and uses the command-line profiler from this package. The basic package version is defined by <see cref="CommandLineToolsConfig.NupkgVersion"/>.
     /// The command-line profiler is saved to `{downloadTo}/dotMemory/{Version}/dotMemory.exe`
     /// If the file exists, a new one is not downloaded.
     /// </remarks>
