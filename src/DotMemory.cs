@@ -239,9 +239,9 @@ namespace JetBrains.Profiler.SelfApi
     }
 
     /// <summary>
-    /// Gets a memory snapshot of the current process.
+    ///   Collect memory snapshot of the current process and save it to the disk. This method forces full GC.
     /// </summary>
-    /// <param name="name">Optional snapshot name.</param>
+    /// <param name="name">The name of the memory snapshot. This is not a file name. Currently not used.</param>
     public static void GetSnapshot(string name = null)
     {
       lock (Mutex)
