@@ -117,7 +117,8 @@ namespace JetBrains.Profiler.SelfApi.Impl
               input,
               output,
               content.Headers.ContentLength ?? GetEstimatedSize(),
-              new SubProgress(progress, 0, downloadWeigth)
+              new SubProgress(progress, 0, downloadWeigth),
+              cancellationToken
               );
           }
         }
@@ -160,7 +161,8 @@ namespace JetBrains.Profiler.SelfApi.Impl
                 input,
                 output,
                 entry.Length,
-                new SubProgress(progress, subStart, subStep)
+                new SubProgress(progress, subStart, subStep),
+                cancellationToken
                 );
             }
 
@@ -287,7 +289,8 @@ namespace JetBrains.Profiler.SelfApi.Impl
       Stream @from,
       Stream to,
       long length,
-      IProgress<double> progress)
+      IProgress<double> progress,
+      CancellationToken cancellationToken)
     {
       var buffer = new byte[65535];
       var bytesCopied = 0L;
@@ -306,6 +309,7 @@ namespace JetBrains.Profiler.SelfApi.Impl
 
         var percents = bytesCopied < length ? bytesCopied * 100 / length : 100;
         progress.Report(percents);
+        cancellationToken.ThrowIfCancellationRequested();
       }
     }
   }
