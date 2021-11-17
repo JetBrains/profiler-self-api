@@ -2,6 +2,7 @@ using System;
 using System.IO;
 using System.IO.Compression;
 using System.Linq;
+using System.Net;
 using System.Net.Http;
 using System.Reflection;
 using System.Threading;
@@ -191,10 +192,22 @@ namespace JetBrains.Profiler.SelfApi.Impl
       }
       catch (IOException e)
       {
+        ThrowOperationCanceledExceptionIfNeeded(e);
         throw new Exception(
           $"Failed to save/unpack prerequisite package. Please, check the path and available disk space.\n[{downloadTo}]",
           e
           );
+      }
+    }
+
+    private static void ThrowOperationCanceledExceptionIfNeeded(Exception e, int maxExceptionDepth = 5)
+    {
+      for (var i = 0; i < maxExceptionDepth && e != null; i++)
+      {
+        if(e is WebException webException)
+          if (webException.Status == WebExceptionStatus.RequestCanceled)
+            throw new OperationCanceledException("Failed to download prerequisite package. Operation was cancelled.", e);
+        e = e.InnerException;
       }
     }
 
