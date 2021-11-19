@@ -320,7 +320,7 @@ namespace JetBrains.Profiler.SelfApi.Impl
         if (progress == null)
           continue;
 
-        var percents = bytesCopied < length ? bytesCopied * 100 / length : 100;
+        var percents = bytesCopied < length ? bytesCopied * 100.0 / length : 100;
         progress.Report(percents);
         cancellationToken.ThrowIfCancellationRequested();
       }
