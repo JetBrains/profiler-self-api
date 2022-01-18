@@ -1,13 +1,15 @@
 ﻿using System;
 using System.IO;
 using System.Runtime.InteropServices;
-using JetBrains.Profiler.SelfApi.Impl.Unix;
 
-namespace JetBrains.Profiler.SelfApi.Impl
+namespace JetBrains.Profiler.SelfApi.Impl.Unix
 {
-  internal static partial class Helper
+  internal static class UnixHelper
   {
-    private static readonly Lazy<Tuple<PlatformId, ArchitectureId>> UnixConfigLazy = new Lazy<Tuple<PlatformId, ArchitectureId>>(DeduceUnixConfig);
+    private static readonly Lazy<Tuple<PlatformId, ArchitectureId>> ourUnixConfigLazy = new Lazy<Tuple<PlatformId, ArchitectureId>>(DeduceUnixConfig);
+
+    public static PlatformId Platform => ourUnixConfigLazy.Value.Item1;
+    public static ArchitectureId OsArchitecture => ourUnixConfigLazy.Value.Item2;
 
     private static PlatformId ToPlatformId(string sysname)
     {
@@ -71,7 +73,7 @@ namespace JetBrains.Profiler.SelfApi.Impl
       }
     }
 
-    private static void UnixChMod(string path, UnixFileModes mode)
+    public static void UnixChMod(string path, UnixFileModes mode)
     {
       if (!Path.IsPathRooted(path))
         throw new ArgumentException(nameof(path));

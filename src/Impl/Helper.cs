@@ -15,13 +15,13 @@ namespace JetBrains.Profiler.SelfApi.Impl
     public static void ChModExecutable(string path)
     {
       if (PlatformLazy.Value != PlatformId.Windows)
-        UnixChMod(path, UnixFileModes.rwxr_xr_x);
+        UnixHelper.UnixChMod(path, UnixFileModes.rwxr_xr_x);
     }
 
     public static void ChModNormal(string path)
     {
       if (PlatformLazy.Value != PlatformId.Windows)
-        UnixChMod(path, UnixFileModes.rw_r__r__);
+        UnixHelper.UnixChMod(path, UnixFileModes.rw_r__r__);
     }
 
     private static PlatformId DeducePlatformId()
@@ -31,7 +31,7 @@ namespace JetBrains.Profiler.SelfApi.Impl
 #elif NET20 || NET35 || NET40 || NET45 || NET451 || NET452 || NET46 || NET461 || NET462 || NET47
       switch (Environment.OSVersion.Platform)
       {
-      case PlatformID.Unix: return UnixConfigLazy.Value.Item1;
+      case PlatformID.Unix: return UnixHelper.Platform;
       case PlatformID.Win32NT: return PlatformId.Windows;
       }
 #else
@@ -49,10 +49,8 @@ namespace JetBrains.Profiler.SelfApi.Impl
 #elif NET20 || NET35 || NET40 || NET45 || NET451 || NET452 || NET46 || NET461 || NET462 || NET47
       switch (Environment.OSVersion.Platform)
       {
-      case PlatformID.Unix: return UnixConfigLazy.Value.Item2;
+      case PlatformID.Unix: return UnixHelper.OsArchitecture;
       case PlatformID.Win32NT: return Environment.Is64BitOperatingSystem ? ArchitectureId.X64 : ArchitectureId.X86;
-      default:
-        throw new PlatformNotSupportedException();
       }
 #else
       switch (RuntimeInformation.OSArchitecture)
@@ -60,9 +58,9 @@ namespace JetBrains.Profiler.SelfApi.Impl
       case Architecture.Arm64: return ArchitectureId.Arm64;
       case Architecture.X64: return ArchitectureId.X64;
       case Architecture.X86: return ArchitectureId.X86;
-      default: throw new ArgumentOutOfRangeException();
       }
 #endif
+      throw new PlatformNotSupportedException();
     }
 
     public static string ToFolderName(this PlatformId platformId)
