@@ -15,7 +15,7 @@ namespace JetBrains.Profiler.SelfApi.Impl.Unix
     {
       switch (sysname)
       {
-      case "Darwin": return PlatformId.MacOs;
+      case "Darwin": return PlatformId.MacOsX;
       case "Linux": return PlatformId.Linux;
       default: throw new ArgumentOutOfRangeException(nameof(sysname), sysname, null);
       }
@@ -26,7 +26,7 @@ namespace JetBrains.Profiler.SelfApi.Impl.Unix
       switch (platformId)
       {
       case PlatformId.Linux: return 65;
-      case PlatformId.MacOs: return 256;
+      case PlatformId.MacOsX: return 256;
       default: throw new ArgumentOutOfRangeException(nameof(platformId), platformId, null);
       }
     }

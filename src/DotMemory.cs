@@ -321,7 +321,7 @@ namespace JetBrains.Profiler.SelfApi
         switch (Helper.Platform)
         {
         case PlatformId.Linux:
-        case PlatformId.MacOs: return "dotmemory";
+        case PlatformId.MacOsX: return "dotmemory";
         case PlatformId.Windows: return "dotMemory.exe";
         default: throw new ArgumentOutOfRangeException();
         }

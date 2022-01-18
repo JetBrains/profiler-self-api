@@ -36,7 +36,7 @@ namespace JetBrains.Profiler.SelfApi.Impl
       }
 #else
       if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows)) return PlatformId.Windows;
-      if (RuntimeInformation.IsOSPlatform(OSPlatform.OSX)) return PlatformId.MacOs;
+      if (RuntimeInformation.IsOSPlatform(OSPlatform.OSX)) return PlatformId.MacOsX;
       if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux)) return PlatformId.Linux;
 #endif
       throw new PlatformNotSupportedException();
@@ -68,7 +68,7 @@ namespace JetBrains.Profiler.SelfApi.Impl
       switch (platformId)
       {
       case PlatformId.Linux: return "linux";
-      case PlatformId.MacOs: return "macos";
+      case PlatformId.MacOsX: return "macos";
       case PlatformId.Windows: return "windows";
       default: throw new ArgumentOutOfRangeException(nameof(platformId), platformId, null);
       }
@@ -89,7 +89,7 @@ namespace JetBrains.Profiler.SelfApi.Impl
     {
       // Note: This condition will not work on .NET Core 1.x/2.x because Environment.Version is incorrect.
       // Note: We also exclude .NET Core 3.x on macOS because the attach feature is not implemented in it. 
-      if (PlatformLazy.Value == PlatformId.MacOs && Environment.Version.Major == 3)
+      if (PlatformLazy.Value == PlatformId.MacOsX && Environment.Version.Major == 3)
         throw new Exception("The self-profiling API is supported only on .NET 5.0 or later");
     }
 
@@ -97,7 +97,7 @@ namespace JetBrains.Profiler.SelfApi.Impl
     {
       // Note: This condition will not work on .NET Core 1.x/2.x because Environment.Version is incorrect.
       // Note: We also exclude .NET Core 3.0 on Unix because the synchronous sampling is not implemented in it. 
-      if ((PlatformLazy.Value == PlatformId.Linux || PlatformLazy.Value == PlatformId.MacOs) && Environment.Version.Major == 3 && Environment.Version.Minor == 0)
+      if ((PlatformLazy.Value == PlatformId.Linux || PlatformLazy.Value == PlatformId.MacOsX) && Environment.Version.Major == 3 && Environment.Version.Minor == 0)
         throw new Exception("The self-profiling API is supported only on .NET Core 3.1 or later");
     }
   }

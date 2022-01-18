@@ -470,7 +470,7 @@ namespace JetBrains.Profiler.SelfApi
         switch (Helper.Platform)
         {
         case PlatformId.Linux:
-        case PlatformId.MacOs: return "dottrace";
+        case PlatformId.MacOsX: return "dottrace";
         case PlatformId.Windows: return "dottrace.exe";
         default: throw new ArgumentOutOfRangeException();
         }
