@@ -6,40 +6,31 @@ namespace JetBrains.Profiler.SelfApi.Impl.Unix
 {
   internal static class UnixHelper
   {
-    private static readonly Lazy<Tuple<PlatformId, ArchitectureId>> ourUnixConfigLazy = new Lazy<Tuple<PlatformId, ArchitectureId>>(DeduceUnixConfig);
+    private static readonly Lazy<Tuple<PlatformId, ArchitectureId>> ourUnixConfigLazy = new(DeduceUnixConfig);
 
     public static PlatformId Platform => ourUnixConfigLazy.Value.Item1;
     public static ArchitectureId OsArchitecture => ourUnixConfigLazy.Value.Item2;
 
-    private static PlatformId ToPlatformId(string sysname)
-    {
-      switch (sysname)
+    private static PlatformId ToPlatformId(string sysname) => sysname switch
       {
-      case "Darwin": return PlatformId.MacOsX;
-      case "Linux": return PlatformId.Linux;
-      default: throw new ArgumentOutOfRangeException(nameof(sysname), sysname, null);
-      }
-    }
+        "Darwin" => PlatformId.MacOsX,
+        "Linux" => PlatformId.Linux,
+        _ => throw new PlatformNotSupportedException()
+      };
 
-    private static int ToNameLen(this PlatformId platformId)
-    {
-      switch (platformId)
+    private static int ToNameLen(this PlatformId platformId) => platformId switch
       {
-      case PlatformId.Linux: return 65;
-      case PlatformId.MacOsX: return 256;
-      default: throw new ArgumentOutOfRangeException(nameof(platformId), platformId, null);
-      }
-    }
+        PlatformId.Linux => 65,
+        PlatformId.MacOsX => 256,
+        _ => throw new PlatformNotSupportedException()
+      };
 
-    private static ArchitectureId ToArchitecture(string machine)
-    {
-      switch (machine)
+    private static ArchitectureId ToArchitecture(string machine) => machine switch
       {
-      case "aarch64": return ArchitectureId.Arm64;
-      case "x86_64": return ArchitectureId.X64;
-      default: throw new ArgumentOutOfRangeException(nameof(machine), machine, null);
-      }
-    }
+        "arm64" or "aarch64" => ArchitectureId.Arm64,
+        "x86_64" => ArchitectureId.X64,
+        _ => throw new PlatformNotSupportedException()
+      };
 
     private static Tuple<PlatformId, ArchitectureId> DeduceUnixConfig()
     {

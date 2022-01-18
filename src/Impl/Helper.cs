@@ -1,26 +1,30 @@
 ﻿using System;
 using System.Runtime.InteropServices;
+using System.Text;
+using JetBrains.Profiler.SelfApi.Impl.Linux;
 using JetBrains.Profiler.SelfApi.Impl.Unix;
 
 namespace JetBrains.Profiler.SelfApi.Impl
 {
-  internal static partial class Helper
+  internal static class Helper
   {
-    private static readonly Lazy<PlatformId> PlatformLazy = new Lazy<PlatformId>(DeducePlatformId);
-    private static readonly Lazy<ArchitectureId> OsArchitectureLazy = new Lazy<ArchitectureId>(DeduceOsArchitecture);
+    private static readonly Lazy<PlatformId> ourPlatformLazy = new(DeducePlatformId);
+    private static readonly Lazy<ArchitectureId> ourOsArchitectureLazy = new(DeduceOsArchitecture);
+    private static readonly Lazy<LinuxLibCId?> ourLinuxLibCLazy = new(DeduceLinuxLibC);
 
-    public static PlatformId Platform => PlatformLazy.Value;
-    public static ArchitectureId OsArchitecture => OsArchitectureLazy.Value;
+    public static PlatformId Platform => ourPlatformLazy.Value;
+    public static ArchitectureId OsArchitecture => ourOsArchitectureLazy.Value;
+    public static LinuxLibCId? LinuxLibC => ourLinuxLibCLazy.Value;
 
     public static void ChModExecutable(string path)
     {
-      if (PlatformLazy.Value != PlatformId.Windows)
+      if (ourPlatformLazy.Value != PlatformId.Windows)
         UnixHelper.UnixChMod(path, UnixFileModes.rwxr_xr_x);
     }
 
     public static void ChModNormal(string path)
     {
-      if (PlatformLazy.Value != PlatformId.Windows)
+      if (ourPlatformLazy.Value != PlatformId.Windows)
         UnixHelper.UnixChMod(path, UnixFileModes.rw_r__r__);
     }
 
@@ -63,33 +67,49 @@ namespace JetBrains.Profiler.SelfApi.Impl
       throw new PlatformNotSupportedException();
     }
 
-    public static string ToFolderName(this PlatformId platformId)
+    private static LinuxLibCId? DeduceLinuxLibC() => Platform == PlatformId.Linux ? LinuxHelper.LibC : null;
+
+    public static string MakeRid(PlatformId platform, ArchitectureId architecture, LinuxLibCId? linuxLibC = null)
     {
-      switch (platformId)
-      {
-      case PlatformId.Linux: return "linux";
-      case PlatformId.MacOsX: return "macos";
-      case PlatformId.Windows: return "windows";
-      default: throw new ArgumentOutOfRangeException(nameof(platformId), platformId, null);
-      }
+      if (platform == PlatformId.Linux && linuxLibC == null)
+        throw new ArgumentNullException(nameof(linuxLibC));
+      if (platform != PlatformId.Linux && linuxLibC != null)
+        throw new ArgumentException(nameof(linuxLibC));
+      var builder = new StringBuilder().Append(platform.GetRidName());
+      if (linuxLibC != null && linuxLibC.Value.GetRidName() is var linuxLibCStr && !string.IsNullOrEmpty(linuxLibCStr))
+        builder.Append('-').Append(linuxLibCStr);
+      builder.Append('-').Append(architecture.GetRidName());
+      return builder.ToString();
     }
 
-    public static string ToFolderName(this ArchitectureId architectureId)
-    {
-      switch (architectureId)
+    private static string GetRidName(this PlatformId platform) => platform switch
       {
-      case ArchitectureId.Arm64: return "arm64";
-      case ArchitectureId.X64: return "x64";
-      case ArchitectureId.X86: return "x86";
-      default: throw new ArgumentOutOfRangeException(nameof(architectureId), architectureId, null);
-      }
-    }
+        PlatformId.Linux => "linux",
+        PlatformId.MacOsX => "macos",
+        PlatformId.Windows => "windows",
+        _ => throw new PlatformNotSupportedException()
+      };
+
+    private static string GetRidName(this LinuxLibCId linuxLibC) => linuxLibC switch
+      {
+        LinuxLibCId.Glibc => "",
+        LinuxLibCId.Musl => "musl",
+        _ => throw new PlatformNotSupportedException()
+      };
+
+    private static string GetRidName(this ArchitectureId architecture) => architecture switch
+      {
+        ArchitectureId.Arm64 => "arm64",
+        ArchitectureId.X64 => "x64",
+        ArchitectureId.X86 => "x86",
+        _ => throw new PlatformNotSupportedException()
+      };
 
     public static void CheckAttachCompatibility()
     {
       // Note: This condition will not work on .NET Core 1.x/2.x because Environment.Version is incorrect.
       // Note: We also exclude .NET Core 3.x on macOS because the attach feature is not implemented in it. 
-      if (PlatformLazy.Value == PlatformId.MacOsX && Environment.Version.Major == 3)
+      if (ourPlatformLazy.Value == PlatformId.MacOsX && Environment.Version.Major == 3)
         throw new Exception("The self-profiling API is supported only on .NET 5.0 or later");
     }
 
@@ -97,7 +117,7 @@ namespace JetBrains.Profiler.SelfApi.Impl
     {
       // Note: This condition will not work on .NET Core 1.x/2.x because Environment.Version is incorrect.
       // Note: We also exclude .NET Core 3.0 on Unix because the synchronous sampling is not implemented in it. 
-      if ((PlatformLazy.Value == PlatformId.Linux || PlatformLazy.Value == PlatformId.MacOsX) && Environment.Version.Major == 3 && Environment.Version.Minor == 0)
+      if ((ourPlatformLazy.Value == PlatformId.Linux || ourPlatformLazy.Value == PlatformId.MacOsX) && Environment.Version.Major == 3 && Environment.Version.Minor == 0)
         throw new Exception("The self-profiling API is supported only on .NET Core 3.1 or later");
     }
   }

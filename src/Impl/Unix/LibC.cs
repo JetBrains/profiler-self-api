@@ -15,5 +15,8 @@ namespace JetBrains.Profiler.SelfApi.Impl.Unix
 
     [DllImport(LibraryName, SetLastError = true)]
     public static extern int chmod(string pathname, UnixFileModes mode);
+
+    [DllImport(LibraryName)]
+    public static extern ulong strnlen(IntPtr s, ulong maxlen);
   }
 }
