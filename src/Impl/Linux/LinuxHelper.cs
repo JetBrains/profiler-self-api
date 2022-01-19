@@ -2,6 +2,7 @@
 using System.IO;
 using System.IO.MemoryMappedFiles;
 using System.Runtime.InteropServices;
+using JetBrains.Annotations;
 
 namespace JetBrains.Profiler.SelfApi.Impl.Linux
 {
@@ -11,6 +12,7 @@ namespace JetBrains.Profiler.SelfApi.Impl.Linux
 
     public static LinuxLibCId LibC => ourLibCLazy.Value;
 
+    [NotNull]
     private static unsafe string GetProcSelfExeProgramInterpreter()
     {
       using var mappedFile = MemoryMappedFile.CreateFromFile("/proc/self/exe", FileMode.Open, null, 0, MemoryMappedFileAccess.Read);

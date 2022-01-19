@@ -1,6 +1,7 @@
 ﻿using System;
 using System.IO;
 using System.Runtime.InteropServices;
+using JetBrains.Annotations;
 
 namespace JetBrains.Profiler.SelfApi.Impl.Unix
 {
@@ -11,7 +12,7 @@ namespace JetBrains.Profiler.SelfApi.Impl.Unix
     public static PlatformId Platform => ourUnixConfigLazy.Value.Item1;
     public static ArchitectureId OsArchitecture => ourUnixConfigLazy.Value.Item2;
 
-    private static PlatformId ToPlatformId(string sysname) => sysname switch
+    private static PlatformId ToPlatformId([NotNull] string sysname) => sysname switch
       {
         "Darwin" => PlatformId.MacOsX,
         "Linux" => PlatformId.Linux,
@@ -25,7 +26,7 @@ namespace JetBrains.Profiler.SelfApi.Impl.Unix
         _ => throw new PlatformNotSupportedException()
       };
 
-    private static ArchitectureId ToArchitecture(string machine) => machine switch
+    private static ArchitectureId ToArchitecture([NotNull] string machine) => machine switch
       {
         "arm64" or "aarch64" => ArchitectureId.Arm64,
         "x86_64" => ArchitectureId.X64,
@@ -64,7 +65,7 @@ namespace JetBrains.Profiler.SelfApi.Impl.Unix
       }
     }
 
-    public static void UnixChMod(string path, UnixFileModes mode)
+    public static void UnixChMod([NotNull] string path, UnixFileModes mode)
     {
       if (!Path.IsPathRooted(path))
         throw new ArgumentException(nameof(path));

@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Runtime.InteropServices;
 using System.Text;
+using JetBrains.Annotations;
 using JetBrains.Profiler.SelfApi.Impl.Linux;
 using JetBrains.Profiler.SelfApi.Impl.Unix;
 
@@ -16,13 +17,13 @@ namespace JetBrains.Profiler.SelfApi.Impl
     public static ArchitectureId OsArchitecture => ourOsArchitectureLazy.Value;
     public static LinuxLibCId? LinuxLibC => ourLinuxLibCLazy.Value;
 
-    public static void ChModExecutable(string path)
+    public static void ChModExecutable([NotNull] string path)
     {
       if (ourPlatformLazy.Value != PlatformId.Windows)
         UnixHelper.UnixChMod(path, UnixFileModes.rwxr_xr_x);
     }
 
-    public static void ChModNormal(string path)
+    public static void ChModNormal([NotNull] string path)
     {
       if (ourPlatformLazy.Value != PlatformId.Windows)
         UnixHelper.UnixChMod(path, UnixFileModes.rw_r__r__);
@@ -108,7 +109,7 @@ namespace JetBrains.Profiler.SelfApi.Impl
     public static void CheckAttachCompatibility()
     {
       // Note: This condition will not work on .NET Core 1.x/2.x because Environment.Version is incorrect.
-      // Note: We also exclude .NET Core 3.x on macOS because the attach feature is not implemented in it. 
+      // Note: We also exclude .NET Core 3.x on macOS because the attach feature is not implemented in it.
       if (ourPlatformLazy.Value == PlatformId.MacOsX && Environment.Version.Major == 3)
         throw new Exception("The self-profiling API is supported only on .NET 5.0 or later");
     }
@@ -116,7 +117,7 @@ namespace JetBrains.Profiler.SelfApi.Impl
     public static void CheckSamplingCompatibility()
     {
       // Note: This condition will not work on .NET Core 1.x/2.x because Environment.Version is incorrect.
-      // Note: We also exclude .NET Core 3.0 on Unix because the synchronous sampling is not implemented in it. 
+      // Note: We also exclude .NET Core 3.0 on Unix because the synchronous sampling is not implemented in it.
       if ((ourPlatformLazy.Value == PlatformId.Linux || ourPlatformLazy.Value == PlatformId.MacOsX) && Environment.Version.Major == 3 && Environment.Version.Minor == 0)
         throw new Exception("The self-profiling API is supported only on .NET Core 3.1 or later");
     }

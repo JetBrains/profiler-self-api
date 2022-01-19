@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Threading;
+using JetBrains.Annotations;
 
 namespace JetBrains.Profiler.SelfApi.Impl
 {
@@ -12,29 +13,29 @@ namespace JetBrains.Profiler.SelfApi.Impl
 
     #endregion
 
-    private readonly FuncDelegate _func;
-    private readonly object _funcLock = new object();
-    private volatile int _hasValue;
-    private TValue _value;
+    private readonly FuncDelegate myFunc;
+    private readonly object myFuncLock = new();
+    private volatile int myHasValue;
+    private TValue myValue;
 
-    public Lazy(FuncDelegate func)
+    public Lazy([NotNull] FuncDelegate func)
     {
-      _func = func ?? throw new ArgumentNullException(nameof(func));
+      myFunc = func ?? throw new ArgumentNullException(nameof(func));
     }
 
     public TValue Value
     {
       get
       {
-        if (_hasValue == 0)
-          lock (_funcLock)
-            if (_hasValue == 0)
+        if (myHasValue == 0)
+          lock (myFuncLock)
+            if (myHasValue == 0)
             {
-              _value = _func();
-              Interlocked.Increment(ref _hasValue);
+              myValue = myFunc();
+              Interlocked.Increment(ref myHasValue);
             }
 
-        return _value;
+        return myValue;
       }
     }
   }
