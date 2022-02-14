@@ -1,4 +1,4 @@
-# JetBrains.Profiler.SelfApi
+# JetBrains.Profiler.SelfApi [![official JetBrains project](https://jb.gg/badges/official.svg)](https://confluence.jetbrains.com/display/ALL/JetBrains+on+GitHub)
 
 JetBrains Self-Profiling API lets you initiate and control profiling sessions right from the code of your application.
 The snapshots taken by the API calls can be later opened and investigated in JetBrains profiling tools.
