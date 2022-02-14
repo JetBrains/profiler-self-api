@@ -34,17 +34,18 @@ namespace JetBrains.Profiler.SelfApi.Impl
 #if NETSTANDARD1_0
 #error No OS detection possible
 #elif NET20 || NET35 || NET40 || NET45 || NET451 || NET452 || NET46 || NET461 || NET462 || NET47
-      switch (Environment.OSVersion.Platform)
-      {
-      case PlatformID.Unix: return UnixHelper.Platform;
-      case PlatformID.Win32NT: return PlatformId.Windows;
-      }
+      return Environment.OSVersion.Platform switch
+        {
+          PlatformID.Unix => UnixHelper.Platform,
+          PlatformID.Win32NT => PlatformId.Windows,
+          _ => throw new PlatformNotSupportedException()
+        };
 #else
       if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows)) return PlatformId.Windows;
       if (RuntimeInformation.IsOSPlatform(OSPlatform.OSX)) return PlatformId.MacOsX;
       if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux)) return PlatformId.Linux;
-#endif
       throw new PlatformNotSupportedException();
+#endif
     }
 
     private static ArchitectureId DeduceOsArchitecture()
@@ -52,20 +53,28 @@ namespace JetBrains.Profiler.SelfApi.Impl
 #if NETSTANDARD1_0
 #error No OS detection possible
 #elif NET20 || NET35 || NET40 || NET45 || NET451 || NET452 || NET46 || NET461 || NET462 || NET47
-      switch (Environment.OSVersion.Platform)
-      {
-      case PlatformID.Unix: return UnixHelper.OsArchitecture;
-      case PlatformID.Win32NT: return Environment.Is64BitOperatingSystem ? ArchitectureId.X64 : ArchitectureId.X86;
-      }
+      return Environment.OSVersion.Platform switch
+        {
+          // Note(ww898): Normally OsArchitecture == ProcessArchitecture on Unix! However, we should not use `UnixHelper.KernelArchitecture` on Linux because 32-bit docker can be run on 64-bit host!!!
+          PlatformID.Unix => UnixHelper.Platform switch
+            {
+              PlatformId.Linux => LinuxHelper.ProcessArchitecture,
+              PlatformId.MacOsX => UnixHelper.KernelArchitecture,
+              _ => throw new ArgumentOutOfRangeException()
+            },
+          PlatformID.Win32NT => Environment.Is64BitOperatingSystem ? ArchitectureId.X64 : ArchitectureId.X86,
+          _ => throw new PlatformNotSupportedException()
+        };
 #else
-      switch (RuntimeInformation.OSArchitecture)
-      {
-      case Architecture.Arm64: return ArchitectureId.Arm64;
-      case Architecture.X64: return ArchitectureId.X64;
-      case Architecture.X86: return ArchitectureId.X86;
-      }
+      return RuntimeInformation.OSArchitecture switch
+        {
+          Architecture.Arm => ArchitectureId.Arm,
+          Architecture.Arm64 => ArchitectureId.Arm64,
+          Architecture.X64 => ArchitectureId.X64,
+          Architecture.X86 => ArchitectureId.X86,
+          _ => throw new PlatformNotSupportedException()
+        };
 #endif
-      throw new PlatformNotSupportedException();
     }
 
     private static LinuxLibCId? DeduceLinuxLibC() => Platform == PlatformId.Linux ? LinuxHelper.LibC : null;

@@ -21,7 +21,7 @@ ATTENTION: Note that for its work JetBrains Self-Profiling API uses the JetBrain
     <PackageIconUrl>https://resources.jetbrains.com/storage/products/resharper/img/icons/ProfilerSelfApi_128.png</PackageIconUrl>
     <PackageIcon>icon.png</PackageIcon>
     <PackageTags>jetbrains profiler profiling memory performance net dotnet netcore dotnetcore netstandard windows uwp macos mac linux musl glibc x86 x64 arm64 x86-64 x86_64 aarch64</PackageTags>
-    <Version>2.3.0-preview1</Version>
+    <Version>2.3.0-preview2</Version>
     <LangVersion>default</LangVersion>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
   </PropertyGroup>
@@ -29,7 +29,7 @@ ATTENTION: Note that for its work JetBrains Self-Profiling API uses the JetBrain
     <None Include="icon.png" Pack="true" PackagePath="\" />
   </ItemGroup>
   <ItemGroup>
-    <PackageReference Include="JetBrains.Profiler.Api" Version="1.2.0-preview1" />
+    <PackageReference Include="JetBrains.Profiler.Api" Version="1.2.0-preview2" />
     <PackageReference Include="JetBrains.Annotations" Version="2021.3.0" PrivateAssets="All" />
     <PackageReference Include="Microsoft.NETFramework.ReferenceAssemblies" Version="1.0.0" PrivateAssets="All" />
     <Reference Condition="'$(TargetFramework)' == 'net46'" Include="System.IO.Compression" />

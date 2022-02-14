@@ -3,59 +3,49 @@ using System.IO;
 using System.IO.MemoryMappedFiles;
 using System.Runtime.InteropServices;
 using JetBrains.Annotations;
+using JetBrains.Profiler.SelfApi.Impl.Unix;
 
 namespace JetBrains.Profiler.SelfApi.Impl.Linux
 {
   internal static class LinuxHelper
   {
-    private static readonly Lazy<LinuxLibCId> ourLibCLazy = new(DeduceLibCBasedOnRuntimeLinker);
+    private static readonly Lazy<Tuple<LinuxLibCId, ArchitectureId>> ourLibCLazy = new(DeduceElfConfig);
 
-    public static LinuxLibCId LibC => ourLibCLazy.Value;
+    public static LinuxLibCId LibC => ourLibCLazy.Value.Item1;
+    public static ArchitectureId ProcessArchitecture => ourLibCLazy.Value.Item2;
 
-    [NotNull]
-    private static unsafe string GetProcSelfExeProgramInterpreter()
+    private static LinuxLibCId GetInterpreterLibC([NotNull] string interpreter)
     {
-      using var mappedFile = MemoryMappedFile.CreateFromFile("/proc/self/exe", FileMode.Open, null, 0, MemoryMappedFileAccess.Read);
-      using var mappedView = mappedFile.CreateViewAccessor(0, 0, MemoryMappedFileAccess.Read);
+      if (interpreter == null)
+        throw new ArgumentNullException(nameof(interpreter));
 
-      byte* pointer = null;
-      mappedView.SafeMemoryMappedViewHandle.AcquirePointer(ref pointer);
-      try
-      {
-        var ehdr = (Elf.Elf64_Ehdr*)pointer;
-        if (sizeof(Elf.Elf64_Ehdr) > mappedView.Capacity)
-          throw new Exception("Can't parse ELF header");
-
-        var phdr = (Elf.Elf64_Phdr*)(pointer + ehdr->e_phoff);
-        if ((long)ehdr->e_phoff + ehdr->e_phnum * sizeof(Elf.Elf64_Phdr) > mappedView.Capacity ||
-            sizeof(Elf.Elf64_Phdr) != ehdr->e_phentsize)
-          throw new Exception("Can't parse ELF program header");
-        for (var phi = 0; phi < ehdr->e_phnum; ++phi, ++phdr)
-          if (phdr->p_type == Elf.ElfSegmentType.PT_INTERP)
-          {
-            if ((long)(phdr->p_offset + phdr->p_filesz) > mappedView.Capacity ||
-                Unix.LibC.strnlen((IntPtr)(pointer + phdr->p_offset), phdr->p_filesz) != phdr->p_filesz - 1)
-              throw new Exception("Can't parse ELF program interpreter");
-            return Marshal.PtrToStringAnsi((IntPtr)(pointer + phdr->p_offset), (int)phdr->p_filesz - 1);
-          }
-      }
-      finally
-      {
-        mappedView.SafeMemoryMappedViewHandle.ReleasePointer();
-      }
-
-      throw new Exception("Can't find ELF program interpreter");
+      // Note(ww898): Removing interpreter directory is NixOS support because interpreter path contains hash:
+      //                /nix/store/c1nqsqwl9allxbxhqx3iqfxk363qrnzv-glibc-2.32-54/lib/ld-linux-aarch64.so.1
+      //                /nix/store/jsp3h3wpzc842j0rz61m5ly71ak6qgdn-glibc-2.32-54/lib/ld-linux-x86-64.so.2 (attention: lib64 was changed to lib)
+      var interpreterFileName = interpreter.Substring(interpreter.LastIndexOf('/') + 1);
+      if (interpreterFileName.StartsWith("ld-linux"))
+        return LinuxLibCId.Glibc;
+      if (interpreterFileName.StartsWith("ld-musl"))
+        return LinuxLibCId.Musl;
+      throw new PlatformNotSupportedException();
     }
 
-    private static LinuxLibCId DeduceLibCBasedOnRuntimeLinker()
+    private static Tuple<LinuxLibCId, ArchitectureId> DeduceElfConfig()
     {
-      // Note(k15tfu): Checks the runtime linker specified by PT_INTERP program header entry.
-      var interpreter = GetProcSelfExeProgramInterpreter();
-      if (interpreter.EndsWith("/ld-linux-x86-64.so.2") || interpreter.EndsWith("/ld-linux-aarch64.so.1"))
-        return LinuxLibCId.Glibc; // Most of Linux distros
-      if (interpreter.EndsWith("/ld-musl-x86_64.so.1") || interpreter.EndsWith("/ld-musl-aarch64.so.1"))
-        return LinuxLibCId.Musl; // Alpine
-      throw new PlatformNotSupportedException();
+      var elfInfo = ElfUtil.GetElfInfo("/proc/self/exe");
+      if (elfInfo.OsAbi is not (ElfOsAbi.ELFOSABI_NONE or ElfOsAbi.ELFOSABI_LINUX))
+        throw new FormatException("Invalid Linux ELF OS ABI");
+      if (elfInfo.Type is not (ElfType.ET_DYN or ElfType.ET_EXEC))
+        throw new FormatException("Invalid Linux ELF e_type");
+      return Tuple.Create(
+        GetInterpreterLibC(elfInfo.Interpreter ?? throw new FormatException("Can't find ELF program interpreter")),
+        elfInfo.Machine switch
+          {
+            ElfMachine.EM_X86_64 => ArchitectureId.X64,
+            ElfMachine.EM_AARCH64 => ArchitectureId.Arm64,
+            ElfMachine.EM_ARM => ArchitectureId.Arm,
+            _ => throw new FormatException("Invalid Linux ELF e_machine")
+          });
     }
   }
 }

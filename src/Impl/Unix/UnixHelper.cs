@@ -10,7 +10,7 @@ namespace JetBrains.Profiler.SelfApi.Impl.Unix
     private static readonly Lazy<Tuple<PlatformId, ArchitectureId>> ourUnixConfigLazy = new(DeduceUnixConfig);
 
     public static PlatformId Platform => ourUnixConfigLazy.Value.Item1;
-    public static ArchitectureId OsArchitecture => ourUnixConfigLazy.Value.Item2;
+    public static ArchitectureId KernelArchitecture => ourUnixConfigLazy.Value.Item2;
 
     private static PlatformId ToPlatformId([NotNull] string sysname) => sysname switch
       {
