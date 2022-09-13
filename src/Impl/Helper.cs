@@ -4,6 +4,7 @@ using System.Text;
 using JetBrains.Annotations;
 using JetBrains.Profiler.SelfApi.Impl.Linux;
 using JetBrains.Profiler.SelfApi.Impl.Unix;
+using JetBrains.Profiler.SelfApi.Impl.Windows;
 
 namespace JetBrains.Profiler.SelfApi.Impl
 {
@@ -60,19 +61,19 @@ namespace JetBrains.Profiler.SelfApi.Impl
             {
               PlatformId.Linux => LinuxHelper.ProcessArchitecture,
               PlatformId.MacOsX => UnixHelper.KernelArchitecture,
-              _ => throw new ArgumentOutOfRangeException()
+              _ => throw new PlatformNotSupportedException($"Unknown Unix platform {UnixHelper.Platform}")
             },
-          PlatformID.Win32NT => Environment.Is64BitOperatingSystem ? ArchitectureId.X64 : ArchitectureId.X86,
-          _ => throw new PlatformNotSupportedException()
+          PlatformID.Win32NT => WindowsHelper.OsArchitecture,
+          _ => throw new PlatformNotSupportedException($"Unknown OS platform {Environment.OSVersion.Platform}")
         };
 #else
       return RuntimeInformation.OSArchitecture switch
         {
+          Architecture.X86 => ArchitectureId.X86,
+          Architecture.X64 => ArchitectureId.X64,
           Architecture.Arm => ArchitectureId.Arm,
           Architecture.Arm64 => ArchitectureId.Arm64,
-          Architecture.X64 => ArchitectureId.X64,
-          Architecture.X86 => ArchitectureId.X86,
-          _ => throw new PlatformNotSupportedException()
+          _ => throw new PlatformNotSupportedException($"Unknown OS architecture {RuntimeInformation.OSArchitecture}")
         };
 #endif
     }
@@ -110,6 +111,7 @@ namespace JetBrains.Profiler.SelfApi.Impl
     private static string GetRidName(this ArchitectureId architecture) => architecture switch
       {
         ArchitectureId.Arm64 => "arm64",
+        ArchitectureId.Arm => "arm",
         ArchitectureId.X64 => "x64",
         ArchitectureId.X86 => "x86",
         _ => throw new PlatformNotSupportedException()

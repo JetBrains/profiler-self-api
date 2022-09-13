@@ -2,8 +2,8 @@
 {
   internal enum ArchitectureId
   {
-    Arm,
     Arm64,
+    Arm,
     X64,
     X86
   }
