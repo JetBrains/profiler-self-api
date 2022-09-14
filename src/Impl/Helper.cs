@@ -129,7 +129,7 @@ namespace JetBrains.Profiler.SelfApi.Impl
     {
       // Note: This condition will not work on .NET Core 1.x/2.x because Environment.Version is incorrect.
       // Note: We also exclude .NET Core 3.0 on Unix because the synchronous sampling is not implemented in it.
-      if ((ourPlatformLazy.Value == PlatformId.Linux || ourPlatformLazy.Value == PlatformId.MacOsX) && Environment.Version.Major == 3 && Environment.Version.Minor == 0)
+      if (ourPlatformLazy.Value is PlatformId.Linux or PlatformId.MacOsX && Environment.Version.Major == 3 && Environment.Version.Minor == 0)
         throw new Exception("The self-profiling API is supported only on .NET Core 3.1 or later");
     }
   }
