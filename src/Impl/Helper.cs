@@ -56,7 +56,7 @@ namespace JetBrains.Profiler.SelfApi.Impl
 #elif NET20 || NET35 || NET40 || NET45 || NET451 || NET452 || NET46 || NET461 || NET462 || NET47
       return Environment.OSVersion.Platform switch
         {
-          // Note(ww898): Normally OsArchitecture == ProcessArchitecture on Unix! However, we should not use `UnixHelper.KernelArchitecture` on Linux because 32-bit docker can be run on 64-bit host!!!
+          // Note(ww898): Normally OsArchitecture == ProcessArchitecture on Linux! However, we should not use `UnixHelper.KernelArchitecture` on Linux because 32-bit docker can be run on 64-bit host!!!
           PlatformID.Unix => UnixHelper.Platform switch
             {
               PlatformId.Linux => LinuxHelper.ProcessArchitecture,
