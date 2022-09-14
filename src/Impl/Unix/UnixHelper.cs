@@ -7,10 +7,10 @@ namespace JetBrains.Profiler.SelfApi.Impl.Unix
 {
   internal static class UnixHelper
   {
-    private static readonly Lazy<Tuple<PlatformId, ArchitectureId>> ourUnixConfigLazy = new(DeduceUnixConfig);
+    private static readonly Lazy<Tuple<PlatformId, ArchitectureId>> ourUnameLazy = new(DeduceUname);
 
-    public static PlatformId Platform => ourUnixConfigLazy.Value.Item1;
-    public static ArchitectureId KernelArchitecture => ourUnixConfigLazy.Value.Item2;
+    public static PlatformId Platform => ourUnameLazy.Value.Item1;
+    public static ArchitectureId KernelArchitecture => ourUnameLazy.Value.Item2;
 
     private static PlatformId ToPlatformId([NotNull] string sysname) => sysname switch
       {
@@ -26,14 +26,26 @@ namespace JetBrains.Profiler.SelfApi.Impl.Unix
         _ => throw new PlatformNotSupportedException()
       };
 
-    private static ArchitectureId ToArchitecture([NotNull] string machine) => machine switch
+    private static ArchitectureId ToArchitecture(PlatformId platform, [CanBeNull] string machine) => platform switch
       {
-        "arm64" or "aarch64" => ArchitectureId.Arm64,
-        "x86_64" => ArchitectureId.X64,
-        _ => throw new PlatformNotSupportedException()
+        PlatformId.Linux => machine switch
+          {
+            "aarch64" => ArchitectureId.Arm64,
+            "x86_64" => ArchitectureId.X64,
+            "armv7l" or "armv8l" => ArchitectureId.Arm,
+            _ => throw new ArgumentOutOfRangeException(nameof(machine), machine, null)
+          },
+        PlatformId.MacOsX => machine switch
+          {
+            "arm64" => ArchitectureId.Arm64,
+            "x86_64" => ArchitectureId.X64,
+            _ => throw new ArgumentOutOfRangeException(nameof(machine), machine, null)
+          },
+        _ => throw new ArgumentOutOfRangeException(nameof(platform), platform, null)
       };
 
-    private static Tuple<PlatformId, ArchitectureId> DeduceUnixConfig()
+    [NotNull]
+    private static Tuple<PlatformId, ArchitectureId> DeduceUname()
     {
       var buf = IntPtr.Zero;
       try
@@ -51,12 +63,12 @@ namespace JetBrains.Profiler.SelfApi.Impl.Unix
         buf = Marshal.AllocHGlobal(8192);
         var rc = LibC.uname(buf);
         if (rc != 0)
-          throw new Exception("uname() was failed with errno " + Marshal.GetLastWin32Error());
+          throw new Exception("uname() from libc returned " + rc);
 
         var platform = ToPlatformId(Marshal.PtrToStringAnsi(buf));
         var nameLen = platform.ToNameLen();
         const int machineIndex = 4;
-        return Tuple.Create(platform, ToArchitecture(Marshal.PtrToStringAnsi(buf + machineIndex * nameLen)));
+        return Tuple.Create(platform, ToArchitecture(platform, Marshal.PtrToStringAnsi(buf + machineIndex * nameLen)));
       }
       finally
       {
