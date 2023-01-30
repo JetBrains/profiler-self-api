@@ -76,8 +76,8 @@ namespace JetBrains.Profiler.SelfApi.Impl
       IProgress<double> progress,
       CancellationToken cancellationToken)
     {
-      const double downloadWeigth = 0.8;
-      const double unzipWeigth = 0.2;
+      const double downloadWeight = 0.8;
+      const double unzipWeight = 1.0 - downloadWeight;
 
       try
       {
@@ -89,6 +89,9 @@ namespace JetBrains.Profiler.SelfApi.Impl
 
         var nupkgName = GetPackageName() + "." + Helper.MakeRid(Helper.Platform, Helper.OsArchitecture, Helper.LinuxLibC);
         string nupkgFolder, nupkgPath, readyMarker;
+
+        var downloadProgress = new SubProgress(progress, 0, downloadWeight);
+        var unzipProgress = new SubProgress(progress, downloadWeight * 100.0, unzipWeight);
 
         using (var http = new HttpClient())
         {
@@ -118,7 +121,7 @@ namespace JetBrains.Profiler.SelfApi.Impl
               input,
               output,
               content.Headers.ContentLength ?? GetEstimatedSize(),
-              new SubProgress(progress, 0, downloadWeigth),
+              downloadProgress,
               cancellationToken
               );
           }
@@ -146,10 +149,9 @@ namespace JetBrains.Profiler.SelfApi.Impl
             );
 
           Trace.Verbose("Prerequisite.Download: Unpacking...");
-          var subStart = downloadWeigth * 100;
+          var totalUnzippedSize = 0L;
           foreach (var entry in toolsEntries)
           {
-            var subStep = entry.Length * unzipWeigth / totalLength;
             var dstPath = Path.Combine(nupkgFolder, entry.FullName.Substring(toolsPrefix.Length));
 
             Directory.CreateDirectory(Path.GetDirectoryName(dstPath));
@@ -162,7 +164,7 @@ namespace JetBrains.Profiler.SelfApi.Impl
                 input,
                 output,
                 entry.Length,
-                new SubProgress(progress, subStart, subStep),
+                new SubProgress(unzipProgress, 100.0 * totalUnzippedSize / totalLength, 1.0 * entry.Length / totalLength),
                 cancellationToken
                 );
             }
@@ -173,7 +175,7 @@ namespace JetBrains.Profiler.SelfApi.Impl
               Helper.ChModExecutable(dstPath);
             }
 
-            subStart += subStep;
+            totalUnzippedSize += entry.Length;
           }
         }
 
