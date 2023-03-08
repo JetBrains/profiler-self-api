@@ -53,7 +53,10 @@ namespace JetBrains.Profiler.SelfApi.Impl
     {
 #if NETSTANDARD1_0
 #error No OS detection possible
-#elif NET20 || NET35 || NET40 || NET45 || NET451 || NET452 || NET46 || NET461 || NET462 || NET47
+#else
+      // Bug(ww898): We can't use `RuntimeInformation.OSArchitecture` for .NET Standard because:
+      //             - no `IsWow64Process2` call in .NET v5.0/v6.0 Windows ARM64
+      //             - no `sysctl.proc_translated` call in .NET v6.0 macOS ARM64 
       return Environment.OSVersion.Platform switch
         {
           // Note(ww898): Normally OsArchitecture == ProcessArchitecture on Linux! However, we should not use `UnixHelper.KernelArchitecture` on Linux because 32-bit docker can be run on 64-bit host!!!
@@ -65,15 +68,6 @@ namespace JetBrains.Profiler.SelfApi.Impl
             },
           PlatformID.Win32NT => WindowsHelper.OsArchitecture,
           _ => throw new PlatformNotSupportedException($"Unknown OS platform {Environment.OSVersion.Platform}")
-        };
-#else
-      return RuntimeInformation.OSArchitecture switch
-        {
-          Architecture.X86 => ArchitectureId.X86,
-          Architecture.X64 => ArchitectureId.X64,
-          Architecture.Arm => ArchitectureId.Arm,
-          Architecture.Arm64 => ArchitectureId.Arm64,
-          _ => throw new PlatformNotSupportedException($"Unknown OS architecture {RuntimeInformation.OSArchitecture}")
         };
 #endif
     }
