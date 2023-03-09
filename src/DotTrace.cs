@@ -111,7 +111,6 @@ namespace JetBrains.Profiler.SelfApi
       }
     }
 
-    private const int Timeout = 30000;
     private static readonly Prerequisite ConsoleRunnerPackage = new Prerequisite();
     private static readonly object Mutex = new object();
 
@@ -203,7 +202,7 @@ namespace JetBrains.Profiler.SelfApi
         _collectedSnapshots = null;
         _deletedIndexFiles = new HashSet<string>();
         _packedInZipCount = 0;
-        _session = RunProfiler(config).AwaitConnected(Timeout);
+        _session = RunProfiler(config).AwaitConnected();
       }
     }
 
@@ -220,7 +219,7 @@ namespace JetBrains.Profiler.SelfApi
 
         try
         {
-          _session.Detach().AwaitFinished(Timeout);
+          _session.Detach().AwaitFinished();
           _collectedSnapshots = _session.GetCollectedSnapshotsIndexFiles();
         }
         finally
@@ -456,7 +455,7 @@ namespace JetBrains.Profiler.SelfApi
 
       Trace.Verbose("DotTrace.RunConsole: Runner started.");
 
-      return new Session(consoleProfiler, collectedSnapshots);
+      return new Session(consoleProfiler, collectedSnapshots, config.Timeout);
     }
 
     private sealed class Prerequisite : PrerequisiteBase
@@ -490,12 +489,14 @@ namespace JetBrains.Profiler.SelfApi
     private sealed class Session
     {
       private readonly CollectedSnapshots _snapshots;
+      private readonly int _timeout;
       private readonly ConsoleProfiler _consoleProfiler;
 
-      public Session(ConsoleProfiler consoleProfiler, CollectedSnapshots snapshots)
+      public Session(ConsoleProfiler consoleProfiler, CollectedSnapshots snapshots, int timeout)
       {
         _consoleProfiler = consoleProfiler;
         _snapshots = snapshots;
+        _timeout = timeout;
       }
 
       [SuppressMessage("ReSharper", "MemberHidesStaticFromOuterClass")]
@@ -534,16 +535,16 @@ namespace JetBrains.Profiler.SelfApi
         return this;
       }
 
-      public Session AwaitConnected(int milliseconds)
+      public Session AwaitConnected()
       {
         _consoleProfiler.AwaitResponse("ready", -1);
-        _consoleProfiler.AwaitConnected(milliseconds);
+        _consoleProfiler.AwaitConnected(_timeout);
         return this;
       }
 
-      public Session AwaitFinished(int milliseconds)
+      public Session AwaitFinished()
       {
-        _consoleProfiler.AwaitFinished(milliseconds);
+        _consoleProfiler.AwaitFinished(_timeout);
         return this;
       }
 

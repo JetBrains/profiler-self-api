@@ -7,5 +7,6 @@
   {
     internal string LogFile;
     internal string OtherArguments;
+    internal int Timeout = 30000;
   }
 }

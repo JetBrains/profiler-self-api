@@ -173,7 +173,7 @@ namespace JetBrains.Profiler.SelfApi.Impl
     public void AwaitFinished(int milliseconds)
     {
       if (!_process.WaitForExit(milliseconds))
-        throw BuildException($"{_presentableName} has not finished in the given time. See details below.");
+        throw BuildException($"{_presentableName} has not finished in the given time ({milliseconds} ms). Try increasing the profiler response timeout using UseCustomResponseTimeout.");
 
       if (_process.ExitCode != 0)
         throw BuildException($"{_presentableName} has failed. See details below.");
@@ -188,7 +188,7 @@ namespace JetBrains.Profiler.SelfApi.Impl
           throw BuildException($"{_presentableName} has exited unexpectedly. See details below.");
 
         if (milliseconds >= 0 && (DateTime.UtcNow - startTime).TotalMilliseconds > milliseconds)
-          throw BuildException("Profiler.Api was not ready in given time. See details below.");
+          throw BuildException($"Profiler.Api was not ready in given time ({milliseconds} ms). Try increasing the profiler response timeout using UseCustomResponseTimeout.");
 
         Thread.Sleep(40);
       }

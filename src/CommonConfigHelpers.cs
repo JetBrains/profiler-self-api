@@ -35,5 +35,15 @@ namespace JetBrains.Profiler.SelfApi
 
       return config;
     }
+
+    /// <summary>
+    /// Closes the session if the profiler doesn't respond in the specified timeout, for example, when attaching to or detaching from the process
+    /// </summary>
+    public static T UseCustomResponseTimeout<T>(this T config, int milliseconds)
+      where T : CommonConfig
+    {
+      config.Timeout = milliseconds;
+      return config;
+    }
   }
 }
