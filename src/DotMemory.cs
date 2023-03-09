@@ -103,7 +103,6 @@ namespace JetBrains.Profiler.SelfApi
       }
     }
 
-    private const int Timeout = 30000;
     private static readonly Prerequisite ConsoleRunnerPackage = new Prerequisite();
     private static readonly object Mutex = new object();
 
@@ -183,7 +182,7 @@ namespace JetBrains.Profiler.SelfApi
         if (_session != null)
           throw new InvalidOperationException("The profiling session is active already: Attach() was called early.");
 
-        return RunConsole("get-snapshot", config).AwaitFinished(-1).WorkspaceFile;
+        return RunConsole("get-snapshot", config).AwaitFinished().WorkspaceFile;
       }
     }
 
@@ -212,7 +211,7 @@ namespace JetBrains.Profiler.SelfApi
         if (_session != null)
           throw new InvalidOperationException("The profiling session is active still: forgot to call Detach()?");
 
-        _session = RunConsole("attach", config).AwaitConnected(Timeout);
+        _session = RunConsole("attach", config).AwaitConnected();
       }
     }
 
@@ -229,7 +228,7 @@ namespace JetBrains.Profiler.SelfApi
 
         try
         {
-          return _session.Detach().AwaitFinished(Timeout).WorkspaceFile;
+          return _session.Detach().AwaitFinished().WorkspaceFile;
         }
         finally
         {
@@ -307,7 +306,7 @@ namespace JetBrains.Profiler.SelfApi
 
       Trace.Verbose("DotMemory.RunConsole: Runner started.");
 
-      return new Session(consoleProfiler, workspaceFile);
+      return new Session(consoleProfiler, workspaceFile, config.Timeout);
     }
 
     private sealed class Prerequisite : PrerequisiteBase
@@ -341,10 +340,12 @@ namespace JetBrains.Profiler.SelfApi
     private sealed class Session
     {
       private readonly ConsoleProfiler _consoleProfiler;
+      private readonly int _timeout;
 
-      public Session(ConsoleProfiler consoleProfiler, string workspaceFile)
+      public Session(ConsoleProfiler consoleProfiler, string workspaceFile, int timeout)
       {
         _consoleProfiler = consoleProfiler;
+        _timeout = timeout;
 
         WorkspaceFile = workspaceFile;
       }
@@ -365,15 +366,15 @@ namespace JetBrains.Profiler.SelfApi
         return this;
       }
 
-      public Session AwaitConnected(int milliseconds)
+      public Session AwaitConnected()
       {
-        _consoleProfiler.AwaitConnected(milliseconds);
+        _consoleProfiler.AwaitConnected(_timeout);
         return this;
       }
 
-      public Session AwaitFinished(int milliseconds)
+      public Session AwaitFinished()
       {
-        _consoleProfiler.AwaitFinished(milliseconds);
+        _consoleProfiler.AwaitFinished(_timeout);
         return this;
       }
     }
