@@ -27,7 +27,7 @@ Supported frameworks:
     <PackageIconUrl>https://resources.jetbrains.com/storage/products/resharper/img/icons/ProfilerSelfApi_128.png</PackageIconUrl>
     <PackageIcon>icon.png</PackageIcon>
     <PackageTags>jetbrains profiler profiling memory performance net dotnet netcore dotnetcore netstandard windows uwp macos mac linux musl glibc x86 x64 arm64 x86-64 x86_64 aarch64</PackageTags>
-    <Version>2.4.2</Version>
+    <Version>2.4.3-preview1</Version>
     <LangVersion>default</LangVersion>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
   </PropertyGroup>
