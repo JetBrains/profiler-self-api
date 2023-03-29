@@ -4,7 +4,7 @@
     <RootNamespace>JetBrains.Profiler.SelfApi</RootNamespace>
     <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
     <SignAssembly>true</SignAssembly>
-    <AssemblyOriginatorKeyFile>Subplatform.Snk</AssemblyOriginatorKeyFile>
+    <AssemblyOriginatorKeyFile>..\..\key.snk</AssemblyOriginatorKeyFile>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
     <PackageLicenseExpression>Apache-2.0</PackageLicenseExpression>
     <Company>JetBrains s.r.o.</Company>
@@ -32,7 +32,7 @@ Supported frameworks:
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
   </PropertyGroup>
   <ItemGroup>
-    <None Include="icon.png" Pack="true" PackagePath="\" />
+    <None Include="../../icon.png" Pack="true" Visible="false" PackagePath="" />
   </ItemGroup>
   <ItemGroup>
     <PackageReference Include="JetBrains.Profiler.Api" Version="1.3.0" />

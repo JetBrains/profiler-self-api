@@ -1,0 +1,24 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "JetBrains.Profiler.SelfApi", "JetBrains.Profiler.SelfApi\src\JetBrains.Profiler.SelfApi.csproj", "{CC7D3123-03E8-4E78-8D26-A733CA7BA229}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{3D2DD4F1-5931-4A0B-B483-9BE9EE2A4B06}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{3D2DD4F1-5931-4A0B-B483-9BE9EE2A4B06}.Release|Any CPU.Build.0 = Release|Any CPU
+		{3D2DD4F1-5931-4A0B-B483-9BE9EE2A4B06}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{3D2DD4F1-5931-4A0B-B483-9BE9EE2A4B06}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{2B0D4EFC-24BD-4408-BB23-CFB286587946}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{2B0D4EFC-24BD-4408-BB23-CFB286587946}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{2B0D4EFC-24BD-4408-BB23-CFB286587946}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{2B0D4EFC-24BD-4408-BB23-CFB286587946}.Release|Any CPU.Build.0 = Release|Any CPU
+		{CC7D3123-03E8-4E78-8D26-A733CA7BA229}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{CC7D3123-03E8-4E78-8D26-A733CA7BA229}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{CC7D3123-03E8-4E78-8D26-A733CA7BA229}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{CC7D3123-03E8-4E78-8D26-A733CA7BA229}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+EndGlobal
