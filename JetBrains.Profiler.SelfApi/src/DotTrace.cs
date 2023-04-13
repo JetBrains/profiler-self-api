@@ -9,6 +9,7 @@ using System.Text.RegularExpressions;
 using System.Threading;
 using System.IO.Compression;
 using System.Threading.Tasks;
+using JetBrains.HabitatDetector;
 using JetBrains.Profiler.Api;
 using JetBrains.Profiler.SelfApi.Impl;
 
@@ -103,7 +104,7 @@ namespace JetBrains.Profiler.SelfApi
       /// <returns></returns>
       public Config UseTimelineProfilingType(bool askUacElevationIfRequired = false)
       {
-        if (Helper.Platform != PlatformId.Windows)
+        if (HabitatInfo.Platform != JetPlatform.Windows)
           throw new InvalidOperationException("The Timeline profiling type is supported only on Windows platform");
         Type = ProfilingType.Timeline;
         AskUacElevationIfRequired = askUacElevationIfRequired;
@@ -466,11 +467,11 @@ namespace JetBrains.Profiler.SelfApi
 
       protected override string GetRunnerName()
       {
-        switch (Helper.Platform)
+        switch (HabitatInfo.Platform)
         {
-        case PlatformId.Linux:
-        case PlatformId.MacOsX: return "dottrace";
-        case PlatformId.Windows: return "dottrace.exe";
+        case JetPlatform.Linux:
+        case JetPlatform.MacOsX: return "dottrace";
+        case JetPlatform.Windows: return "dottrace.exe";
         default: throw new ArgumentOutOfRangeException();
         }
       }

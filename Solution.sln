@@ -2,6 +2,8 @@
 Microsoft Visual Studio Solution File, Format Version 12.00
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "JetBrains.Profiler.SelfApi", "JetBrains.Profiler.SelfApi\src\JetBrains.Profiler.SelfApi.csproj", "{CC7D3123-03E8-4E78-8D26-A733CA7BA229}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "JetBrains.Profiler.SelfApi.Tests", "JetBrains.Profiler.SelfApi\tests\JetBrains.Profiler.SelfApi.Tests.csproj", "{5B544FE0-E63B-416D-AF1C-13F49E31F9E8}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -20,5 +22,9 @@ Global
 		{CC7D3123-03E8-4E78-8D26-A733CA7BA229}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{CC7D3123-03E8-4E78-8D26-A733CA7BA229}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{CC7D3123-03E8-4E78-8D26-A733CA7BA229}.Release|Any CPU.Build.0 = Release|Any CPU
+		{5B544FE0-E63B-416D-AF1C-13F49E31F9E8}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{5B544FE0-E63B-416D-AF1C-13F49E31F9E8}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{5B544FE0-E63B-416D-AF1C-13F49E31F9E8}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{5B544FE0-E63B-416D-AF1C-13F49E31F9E8}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 EndGlobal

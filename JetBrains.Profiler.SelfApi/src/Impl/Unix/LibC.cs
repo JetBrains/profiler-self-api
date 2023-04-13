@@ -1,22 +1,16 @@
-﻿using System;
-using System.Diagnostics.CodeAnalysis;
+﻿using System.Diagnostics.CodeAnalysis;
 using System.Runtime.InteropServices;
 
 namespace JetBrains.Profiler.SelfApi.Impl.Unix
 {
   [SuppressMessage("ReSharper", "InconsistentNaming")]
   [SuppressMessage("ReSharper", "IdentifierTypo")]
+  [SuppressMessage("ReSharper", "MemberCanBePrivate.Global")]
   internal static class LibC
   {
-    private const string LibraryName = "libc"; // Note: No extension here, because CoreCLR support that case
+    internal const string LibraryName = "libc"; // Note: No extension here, because CoreCLR support that case
 
-    [DllImport(LibraryName, SetLastError = true)]
-    public static extern int uname(IntPtr buf);
-
-    [DllImport(LibraryName, SetLastError = true)]
-    public static extern int chmod(string pathname, UnixFileModes mode);
-
-    [DllImport(LibraryName)]
-    public static extern ulong strnlen(IntPtr s, ulong maxlen);
+    [DllImport(LibraryName, SetLastError = true, PreserveSig = true)]
+    internal static extern int chmod(string pathname, UnixFileModes mode);
   }
 }

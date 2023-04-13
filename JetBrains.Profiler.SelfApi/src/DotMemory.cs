@@ -5,6 +5,7 @@ using System.IO;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+using JetBrains.HabitatDetector;
 using JetBrains.Profiler.Api;
 using JetBrains.Profiler.SelfApi.Impl;
 
@@ -317,11 +318,11 @@ namespace JetBrains.Profiler.SelfApi
 
       protected override string GetRunnerName()
       {
-        switch (Helper.Platform)
+        switch (HabitatInfo.Platform)
         {
-        case PlatformId.Linux:
-        case PlatformId.MacOsX: return "dotmemory";
-        case PlatformId.Windows: return "dotMemory.exe";
+        case JetPlatform.Linux:
+        case JetPlatform.MacOsX: return "dotmemory";
+        case JetPlatform.Windows: return "dotMemory.exe";
         default: throw new ArgumentOutOfRangeException();
         }
       }
