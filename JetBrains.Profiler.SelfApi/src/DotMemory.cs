@@ -316,16 +316,9 @@ namespace JetBrains.Profiler.SelfApi
       {
       }
 
-      protected override string GetRunnerName()
-      {
-        switch (HabitatInfo.Platform)
-        {
-        case JetPlatform.Linux:
-        case JetPlatform.MacOsX: return "dotmemory";
-        case JetPlatform.Windows: return "dotMemory.exe";
-        default: throw new ArgumentOutOfRangeException();
-        }
-      }
+      protected override string GetRunnerName() => HabitatInfo.Platform == JetPlatform.Windows
+        ? "dotMemory.exe"
+        : "dotmemory";
 
       protected override string GetPackageName()
       {
