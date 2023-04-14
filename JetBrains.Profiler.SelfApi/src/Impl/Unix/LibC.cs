@@ -10,7 +10,7 @@ namespace JetBrains.Profiler.SelfApi.Impl.Unix
   {
     internal const string LibraryName = "libc"; // Note: No extension here, because CoreCLR support that case
 
-    [DllImport(LibraryName, SetLastError = true, PreserveSig = true)]
+    [DllImport(LibraryName, SetLastError = true, ExactSpelling = true)]
     internal static extern int chmod(string pathname, UnixFileModes mode);
   }
 }
