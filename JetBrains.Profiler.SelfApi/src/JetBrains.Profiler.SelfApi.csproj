@@ -35,7 +35,7 @@ Supported frameworks:
     <None Include="../../icon.png" Pack="true" Visible="false" PackagePath="" />
   </ItemGroup>
   <ItemGroup>
-    <PackageReference Include="JetBrains.HabitatDetector" Version="1.0.0-preview5" />
+    <PackageReference Include="JetBrains.HabitatDetector" Version="1.0.1" />
     <PackageReference Include="JetBrains.Profiler.Api" Version="1.4.0-preview1" />
     <PackageReference Include="JetBrains.Annotations" Version="2022.3.1" PrivateAssets="All" />
     <PackageReference Include="Microsoft.NETFramework.ReferenceAssemblies" Version="1.0.3" PrivateAssets="All" />
