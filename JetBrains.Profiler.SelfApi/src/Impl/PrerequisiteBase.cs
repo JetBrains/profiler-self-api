@@ -88,7 +88,7 @@ namespace JetBrains.Profiler.SelfApi.Impl
         Trace.Info("Prerequisite.Download: targetPath = `{0}`", downloadTo);
         Directory.CreateDirectory(downloadTo);
 
-        var nupkgName = GetPackageName() + "." + HabitatInfo.GetRuntimeIdString(HabitatInfo.Platform, HabitatInfo.OSArchitecture, HabitatInfo.LinuxLibC);
+        var nupkgName = GetPackageName() + "." + HabitatInfo.OSRuntimeIdString;
         string nupkgFolder, nupkgPath, readyMarker;
 
         var downloadProgress = new SubProgress(progress, 0, downloadWeight);
