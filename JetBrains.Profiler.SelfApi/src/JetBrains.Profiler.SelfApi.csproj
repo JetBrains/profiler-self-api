@@ -26,7 +26,6 @@ Supported frameworks:
     • .NET 5.0 and later</PackageReleaseNotes>
     <RepositoryUrl>https://github.com/JetBrains/profiler-self-api</RepositoryUrl>
     <PackageProjectUrl>https://github.com/JetBrains/profiler-self-api/blob/master/README.md</PackageProjectUrl>
-    <PackageIconUrl>https://resources.jetbrains.com/storage/products/resharper/img/icons/ProfilerSelfApi_128.png</PackageIconUrl>
     <PackageIcon>icon.png</PackageIcon>
     <PackageTags>jetbrains profiler profiling memory performance net dotnet netcore dotnetcore netstandard windows uwp macos mac linux musl glibc x86 x64 arm64 x86-64 x86_64 aarch64</PackageTags>
     <Version>2.5.0-preview3</Version>
