@@ -7,6 +7,7 @@ using System.Net.Http;
 using System.Reflection;
 using System.Threading;
 using System.Threading.Tasks;
+using JetBrains.Annotations;
 using JetBrains.HabitatDetector;
 
 namespace JetBrains.Profiler.SelfApi.Impl
@@ -118,7 +119,7 @@ namespace JetBrains.Profiler.SelfApi.Impl
           using (var input = await content.ReadAsStreamAsync().ConfigureAwait(false))
           using (var output = File.Create(nupkgPath))
           {
-            Copy(
+            CopyStream(
               input,
               output,
               content.Headers.ContentLength ?? GetEstimatedSize(),
@@ -161,7 +162,7 @@ namespace JetBrains.Profiler.SelfApi.Impl
             using (var output = File.Create(dstPath))
             {
               Trace.Verbose("Prerequisite.Download:   `{0}` -> `{1}`", entry.FullName, dstPath);
-              Copy(
+              CopyStream(
                 input,
                 output,
                 entry.Length,
@@ -301,11 +302,11 @@ namespace JetBrains.Profiler.SelfApi.Impl
       return string.IsNullOrEmpty(assembly.Location) ? string.Empty : Path.GetDirectoryName(assembly.Location);
     }
 
-    private static void Copy(
-      Stream @from,
-      Stream to,
-      long length,
-      IProgress<double> progress,
+    private static void CopyStream(
+      [NotNull] Stream from,
+      [NotNull] Stream to,
+      long estimatedLength,
+      [NotNull] IProgress<double> progress,
       CancellationToken cancellationToken)
     {
       var buffer = new byte[64 * 1024];
@@ -320,11 +321,9 @@ namespace JetBrains.Profiler.SelfApi.Impl
         to.Write(buffer, 0, bytesRead);
         bytesCopied += bytesRead;
 
-        if (progress == null)
-          continue;
-
-        var percents = bytesCopied < length ? bytesCopied * 100.0 / length : 100;
+        var percents = bytesCopied < estimatedLength ? bytesCopied * 100.0 / estimatedLength : 100;
         progress.Report(percents);
+        
         cancellationToken.ThrowIfCancellationRequested();
       }
     }
