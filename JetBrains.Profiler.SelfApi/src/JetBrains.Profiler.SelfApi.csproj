@@ -17,11 +17,11 @@
 ATTENTION: Note that for its work JetBrains Self-Profiling API uses the JetBrains.dotMemory.Console and JetBrains.dotTrace.CommandLineTools packages which is distributed under the JetBrains Redistributable Product license: The library is free and can be freely redistributed but disassembling is not allowed.
 </Description>
     <PackageReleaseNotes>Supported OSs:
-    • Windows 7 x86/x64 and later, Windows 11 x86/x64/arm64 and later
-    • macOS 10.12 Sierra x64 and later, macOS 11.0 Big Sur x64/arm64 and later
-    • Linux Glibc/Musl x64/arm/arm64 (most desktop distributions like Alpine, CentOS, Debian, Fedora, Ubuntu and derivatives)
+    • Windows 7 x86/x64 and later, Windows 11 x86/x64/ARM64 and later
+    • macOS 10.12 Sierra x64 and later, macOS 11.0 Big Sur x64/ARM64 and later
+    • Linux Glibc/Musl x64/ARM/ARM64 (most distributions like Alpine, CentOS, Debian, Fedora, Ubuntu and derivatives)
 Supported frameworks:
-    • .NET Framework 4.6.1 and later
+    • .NET Framework 4.6 and later
     • .NET Core 3.0 and later
     • .NET 5.0 and later</PackageReleaseNotes>
     <RepositoryUrl>https://github.com/JetBrains/profiler-self-api</RepositoryUrl>
