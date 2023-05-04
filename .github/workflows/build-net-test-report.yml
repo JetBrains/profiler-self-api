@@ -1,0 +1,24 @@
+name: net-test-report
+
+on:
+  workflow_run:
+    workflows: ['net']
+    types:
+      - completed
+
+permissions:
+  checks: write
+
+jobs:
+  report:
+
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: dorny/test-reporter@v1
+      with:
+        artifact: /test-results-(.*)/
+        name: test-report ($1)
+        path: '**/*.trx'
+        reporter: dotnet-trx
+        list-tests: failed

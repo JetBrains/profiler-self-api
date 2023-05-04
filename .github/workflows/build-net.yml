@@ -7,7 +7,7 @@ on:
     branches: [ master ]
 
 jobs:
-  build_and_test:
+  build-and-tests:
 
     strategy:
       fail-fast: false
@@ -19,15 +19,20 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v3
-      - name: Setup .NET Core SDK
+      - name: Setup .NET SDK
         uses: actions/setup-dotnet@v3
         with:
           dotnet-version: |
             3.1.x
             7.0.x
-      - name: Install dependencies
+      - name: Restore
         run: dotnet restore
-      - name: Build
-        run: dotnet build --configuration Release --no-restore
-      - name: Test
-        run: dotnet test --no-restore --verbosity normal
+      - name: Build and Tests
+        run: dotnet test --configuration Release --no-restore --verbosity normal --logger 'trx;LogFilePrefix=test-results'
+      - name: Upload test results
+        uses: actions/upload-artifact@v3
+        if: always()
+        with:
+          name: test-results-${{ matrix.os }}
+          path: ${{ github.workspace }}/**/tests/TestResults/*
+          if-no-files-found: error
