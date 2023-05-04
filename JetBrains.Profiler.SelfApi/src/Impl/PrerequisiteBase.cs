@@ -308,13 +308,13 @@ namespace JetBrains.Profiler.SelfApi.Impl
       IProgress<double> progress,
       CancellationToken cancellationToken)
     {
-      var buffer = new byte[65535];
+      var buffer = new byte[64 * 1024];
       var bytesCopied = 0L;
 
       while (true)
       {
         var bytesRead = from.Read(buffer, 0, buffer.Length);
-        if (bytesRead <= 0)
+        if (bytesRead == 0)
           break;
 
         to.Write(buffer, 0, bytesRead);
