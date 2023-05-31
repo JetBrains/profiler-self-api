@@ -4,6 +4,7 @@ using System.Diagnostics;
 using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading;
+using JetBrains.Annotations;
 
 namespace JetBrains.Profiler.SelfApi.Impl
 {
@@ -14,14 +15,15 @@ namespace JetBrains.Profiler.SelfApi.Impl
     private readonly string _presentableName;
     private readonly List<string> _outputLines = new List<string>();
     private readonly List<string> _errorLines = new List<string>();
-    private readonly Func<bool> _isReady;
+    [CanBeNull]
+    private readonly Func<bool> _isApiReady;
     private int _firstOutputLineToProcess;
 
-    public ConsoleProfiler(string executable, string arguments, string messageServicePrefix, string presentableName, Func<bool> isReady, IResponseCommandProcessor commandProcessor = null)
+    public ConsoleProfiler(string executable, string arguments, string messageServicePrefix, string presentableName, [CanBeNull] Func<bool> isApiReady, IResponseCommandProcessor commandProcessor = null)
     {
       _prefix = messageServicePrefix;
       _presentableName = presentableName;
-      _isReady = isReady;
+      _isApiReady = isApiReady;
 
       var commandRegex = BuildCommandRegex("([a-zA-Z-]*)", "(.*)");
       var si = new ProcessStartInfo
@@ -37,7 +39,7 @@ namespace JetBrains.Profiler.SelfApi.Impl
 
       _process = new Process {StartInfo = si};
       _process.OutputDataReceived +=
-        (sender, args) =>
+        (_, args) =>
           {
             if (args.Data != null)
             {
@@ -57,7 +59,7 @@ namespace JetBrains.Profiler.SelfApi.Impl
           };
 
       _process.ErrorDataReceived +=
-        (sender, args) =>
+        (_, args) =>
           {
             if (args.Data != null)
             {
@@ -76,6 +78,7 @@ namespace JetBrains.Profiler.SelfApi.Impl
       _process.BeginErrorReadLine();
     }
 
+    public bool IsApiUsed => _isApiReady != null;
     private Match WaitFor(Regex regex, int milliseconds)
     {
       var startTime = DateTime.UtcNow;
@@ -119,6 +122,9 @@ namespace JetBrains.Profiler.SelfApi.Impl
 
     public void Send(string command, params string[] args)
     {
+      if (IsApiUsed)
+        throw new InvalidOperationException("It is not possible to send commands if profiler API is used");
+
       var messageBuilder = new StringBuilder();
       messageBuilder.Append(_prefix).Append("[\"").Append(command).Append("\"");
 
@@ -177,7 +183,10 @@ namespace JetBrains.Profiler.SelfApi.Impl
     public void AwaitConnected(int milliseconds)
     {
       var startTime = DateTime.UtcNow;
-      while (!_isReady())
+      if(_isApiReady == null)
+        return;
+
+      while (!_isApiReady())
       {
         if (_process.HasExited)
           throw BuildException($"{_presentableName} has exited unexpectedly. See details below.");

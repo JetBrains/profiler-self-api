@@ -11,6 +11,34 @@ namespace JetBrains.Profiler.SelfApi
   public static class CommonConfigHelpers
   {
     /// <summary>
+    /// By default self-api profiles the same process it was run in.
+    /// With this option it is possible to profile another process by its pid
+    /// </summary>
+    public static T ProfileExternalProcess<T>(this T config, int pid)
+      where T : CommonConfig
+    {
+      config.Pid = pid;
+      return config.DoNotUseApi();
+    }
+
+    /// <summary>
+    /// [Advanced use only] Prohibits using `JetBrains.Profiler.Api` to control the profiling session in case <see cref="ProfileExternalProcess{T}"/> was used.>
+    /// </summary>
+    /// <remarks>
+    /// By default, `JetBrains.Profiler.Api` is used to control the session.
+    /// Otherwise, the self-profiling API uses command-line profiler service messages to control the session.
+    /// </remarks>
+    private static T DoNotUseApi<T>(this T config)
+      where T : CommonConfig
+    {
+      if (config.Pid == null)
+        throw new InvalidOperationException("DoNotUseApi is available only when ProfileCustomProcess was specified.");
+
+      config.DoNotUseApi = true;
+      return config;
+    }
+
+    /// <summary>
     /// Specifies path to log file.
     /// </summary>
     public static T UseLogFile<T>(this T config, string filePath)
