@@ -288,6 +288,7 @@ namespace JetBrains.Profiler.SelfApi
     /// It is not necessary to call this method before taking snapshot.
     /// Note: The command is supported only if profiler API is used to control session.
     /// Otherwise, the command is ignored.
+    /// Note: Ignored while profiling external process <see cref="CommonConfigHelpers.ProfileExternalProcess{T}"/>
     /// </summary>
     /// <exception cref="InvalidOperationException"></exception>
     public static void StopCollectingData()
@@ -380,6 +381,7 @@ namespace JetBrains.Profiler.SelfApi
             }
             catch
             {
+              // ignored
             }
           }
 
@@ -416,14 +418,27 @@ namespace JetBrains.Profiler.SelfApi
       Trace.Verbose("DotTrace.RunConsole: Looking for runner...");
 
       var runnerPath = ConsoleRunnerPackage.GetRunnerPath();
+      var pid = config.Pid ?? Process.GetCurrentProcess().Id;
 
       var commandLine = new StringBuilder();
 
-      commandLine.Append($"attach {Process.GetCurrentProcess().Id}");
+      commandLine.Append($"attach {pid}");
       commandLine.Append($" --profiling-type={config.Type}");
       commandLine.Append(" --service-input=stdin --service-output=On");
       commandLine.Append(" --collect-data-from-start=Off");
-      commandLine.Append(" --use-api");
+
+      Func<bool> apiReadyFunc;
+      if (config.DoNotUseApi)
+      {
+        Trace.Info("DotTrace.RunConsole: do not use API");
+        apiReadyFunc = null;
+      }
+      else
+      {
+        Trace.Info("DotTrace.RunConsole: use API");
+        apiReadyFunc = () => (MeasureProfiler.GetFeatures() & MeasureFeatures.Ready) == MeasureFeatures.Ready;
+        commandLine.Append(" --use-api");
+      }
 
       if (config.LogFile != null)
         commandLine.Append($" \"--log-file={config.LogFile}\" --debug-logging");
@@ -451,7 +466,7 @@ namespace JetBrains.Profiler.SelfApi
         commandLine.ToString(),
         MessageServicePrefix,
         CltPresentableName,
-        () => (MeasureProfiler.GetFeatures() & MeasureFeatures.Ready) == MeasureFeatures.Ready,
+        apiReadyFunc,
         collectedSnapshots);
 
       Trace.Verbose("DotTrace.RunConsole: Runner started.");
@@ -482,28 +497,35 @@ namespace JetBrains.Profiler.SelfApi
 
     private sealed class Session
     {
+      private const int ResponseTimeout = 5000;
       private readonly CollectedSnapshots _snapshots;
-      private readonly int _timeout;
+      private readonly int _operationTimeout;
       private readonly ConsoleProfiler _consoleProfiler;
 
-      public Session(ConsoleProfiler consoleProfiler, CollectedSnapshots snapshots, int timeout)
+      public Session(ConsoleProfiler consoleProfiler, CollectedSnapshots snapshots, int operationTimeout)
       {
         _consoleProfiler = consoleProfiler;
         _snapshots = snapshots;
-        _timeout = timeout;
+        _operationTimeout = operationTimeout;
       }
 
       [SuppressMessage("ReSharper", "MemberHidesStaticFromOuterClass")]
       public Session Detach()
       {
-        MeasureProfiler.Detach();
+        if (_consoleProfiler.IsApiUsed)
+          MeasureProfiler.Detach();
+        else
+          _consoleProfiler.Send("disconnect");
         return this;
       }
 
       [SuppressMessage("ReSharper", "MemberHidesStaticFromOuterClass")]
       public Session SaveData()
       {
-        MeasureProfiler.SaveData();
+        if (_consoleProfiler.IsApiUsed)
+          MeasureProfiler.SaveData();
+        else
+          _consoleProfiler.Send("get-snapshot");
         _consoleProfiler.AwaitResponse("(?:snapshot-saved|get-snapshot-error)", -1);
         return this;
       }
@@ -511,34 +533,51 @@ namespace JetBrains.Profiler.SelfApi
       [SuppressMessage("ReSharper", "MemberHidesStaticFromOuterClass")]
       public Session DropData()
       {
-        MeasureProfiler.DropData();
+        if (_consoleProfiler.IsApiUsed)
+          MeasureProfiler.DropData();
+        else
+        {
+          _consoleProfiler.Send("drop");
+          _consoleProfiler.AwaitResponse("(?:stopped|drop-error)", ResponseTimeout);
+        }
+
         return this;
       }
 
       [SuppressMessage("ReSharper", "MemberHidesStaticFromOuterClass")]
       public Session StartCollectingData()
       {
-        MeasureProfiler.StartCollectingData();
+        if (_consoleProfiler.IsApiUsed)
+          MeasureProfiler.StartCollectingData();
+        else
+        {
+          _consoleProfiler.Send("start");
+          _consoleProfiler.AwaitResponse("(?:started|start-error)", ResponseTimeout);
+        }
         return this;
       }
 
       [SuppressMessage("ReSharper", "MemberHidesStaticFromOuterClass")]
       public Session StopCollectingData()
       {
-        MeasureProfiler.StopCollectingData();
+        if (_consoleProfiler.IsApiUsed)
+          MeasureProfiler.StartCollectingData();
         return this;
       }
 
       public Session AwaitConnected()
       {
         _consoleProfiler.AwaitResponse("ready", -1);
-        _consoleProfiler.AwaitConnected(_timeout);
+        if(_consoleProfiler.IsApiUsed)
+          _consoleProfiler.AwaitConnected(_operationTimeout);
+        else
+          _consoleProfiler.AwaitResponse("connected", _operationTimeout);
         return this;
       }
 
       public Session AwaitFinished()
       {
-        _consoleProfiler.AwaitFinished(_timeout);
+        _consoleProfiler.AwaitFinished(_operationTimeout);
         return this;
       }
 

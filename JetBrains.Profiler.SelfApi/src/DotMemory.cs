@@ -183,6 +183,8 @@ namespace JetBrains.Profiler.SelfApi
         if (_session != null)
           throw new InvalidOperationException("The profiling session is active already: Attach() was called early.");
 
+        // `get-snapshot` command doesn't support API mode
+        config.DoNotUseApi = true;
         return RunConsole("get-snapshot", config).AwaitFinished().WorkspaceFile;
       }
     }
@@ -273,6 +275,8 @@ namespace JetBrains.Profiler.SelfApi
 
       var workspaceFile = GetSaveToFilePath(config);
 
+      var pid = config.Pid ?? Process.GetCurrentProcess().Id;
+
       var commandLine = new StringBuilder();
 
       if (config.LogLevel != null)
@@ -281,7 +285,7 @@ namespace JetBrains.Profiler.SelfApi
       if (config.LogFile != null)
         commandLine.Append($"\"--log-file={config.LogFile}\" ");
 
-      commandLine.Append($"{command} {Process.GetCurrentProcess().Id} \"-f={workspaceFile}\"");
+      commandLine.Append($"{command} {pid} \"-f={workspaceFile}\"");
 
       if (config.IsOverwriteWorkspace)
         commandLine.Append(" --overwrite");
@@ -289,8 +293,18 @@ namespace JetBrains.Profiler.SelfApi
       if (config.IsOpenDotMemory)
         commandLine.Append(" --open-dotmemory");
 
-      if (command != "get-snapshot")
+      Func<bool> apiReadyFunc;
+      if (config.DoNotUseApi)
+      {
+        Trace.Info("DotMemory.RunConsole: do not use API");
+        apiReadyFunc = null;
+      }
+      else
+      {
+        Trace.Info("DotMemory.RunConsole: use API");
+        apiReadyFunc = () => (MemoryProfiler.GetFeatures() & MemoryFeatures.Ready) == MemoryFeatures.Ready;
         commandLine.Append(" --use-api");
+      }
 
       if (config.OtherArguments != null)
         commandLine.Append(' ').Append(config.OtherArguments);
@@ -302,7 +316,7 @@ namespace JetBrains.Profiler.SelfApi
         commandLine.ToString(),
         MessageServicePrefix,
         CltPresentableName,
-        () => (MemoryProfiler.GetFeatures() & MemoryFeatures.Ready) == MemoryFeatures.Ready
+        apiReadyFunc
         );
 
       Trace.Verbose("DotMemory.RunConsole: Runner started.");
@@ -349,20 +363,32 @@ namespace JetBrains.Profiler.SelfApi
       [SuppressMessage("ReSharper", "MemberHidesStaticFromOuterClass")]
       public Session Detach()
       {
-        MemoryProfiler.Detach();
+        if (_consoleProfiler.IsApiUsed)
+          MemoryProfiler.Detach();
+        else
+          _consoleProfiler.Send("disconnect");
         return this;
       }
 
       [SuppressMessage("ReSharper", "MemberHidesStaticFromOuterClass")]
       public Session GetSnapshot(string name)
       {
-        MemoryProfiler.GetSnapshot(name);
+        if (_consoleProfiler.IsApiUsed)
+          MemoryProfiler.GetSnapshot(name);
+        else
+        {
+          _consoleProfiler.Send("get-snapshot", "name", name);
+          _consoleProfiler.AwaitResponse("snapshot-saved", -1);
+        }
         return this;
       }
 
       public Session AwaitConnected()
       {
-        _consoleProfiler.AwaitConnected(_timeout);
+        if(_consoleProfiler.IsApiUsed)
+          _consoleProfiler.AwaitConnected(_timeout);
+        else
+          _consoleProfiler.AwaitResponse("connected", _timeout);
         return this;
       }
 
