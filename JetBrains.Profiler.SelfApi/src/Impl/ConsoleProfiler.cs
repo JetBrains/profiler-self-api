@@ -81,7 +81,8 @@ namespace JetBrains.Profiler.SelfApi.Impl
     public bool IsApiUsed => _isApiReady != null;
     private Match WaitFor(Regex regex, int milliseconds)
     {
-      var startTime = DateTime.UtcNow;
+      var stopwatch = new Stopwatch();
+      stopwatch.Start();
       var lineNum = _firstOutputLineToProcess;
       while (true)
       {
@@ -102,7 +103,7 @@ namespace JetBrains.Profiler.SelfApi.Impl
         if (_process.HasExited)
           return null;
 
-        if (milliseconds >= 0 && (DateTime.UtcNow - startTime).TotalMilliseconds > milliseconds)
+        if (milliseconds >= 0 && stopwatch.ElapsedMilliseconds > milliseconds)
           return null;
 
         Thread.Sleep(40);
@@ -182,16 +183,18 @@ namespace JetBrains.Profiler.SelfApi.Impl
 
     public void AwaitConnected(int milliseconds)
     {
-      var startTime = DateTime.UtcNow;
       if(_isApiReady == null)
         return;
+
+      var stopwatch = new Stopwatch();
+      stopwatch.Start();
 
       while (!_isApiReady())
       {
         if (_process.HasExited)
           throw BuildException($"{_presentableName} has exited unexpectedly. See details below.");
 
-        if (milliseconds >= 0 && (DateTime.UtcNow - startTime).TotalMilliseconds > milliseconds)
+        if (milliseconds >= 0 && stopwatch.ElapsedMilliseconds > milliseconds)
           throw BuildException($"Profiler.Api was not ready in given time ({milliseconds} ms). Try increasing the profiler response timeout using UseCustomResponseTimeout.");
 
         Thread.Sleep(40);
