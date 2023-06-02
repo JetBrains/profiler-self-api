@@ -183,9 +183,9 @@ namespace JetBrains.Profiler.SelfApi
         if (_session != null)
           throw new InvalidOperationException("The profiling session is active already: Attach() was called early.");
 
-        // `get-snapshot` command doesn't support API mode
-        config.DoNotUseApi = true;
-        return RunConsole("get-snapshot", config).AwaitFinished().WorkspaceFile;
+        Attach(config);
+        GetSnapshot();
+        return Detach();
       }
     }
 
