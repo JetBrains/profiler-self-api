@@ -278,7 +278,6 @@ namespace JetBrains.Profiler.SelfApi
       var pid = config.Pid ?? Process.GetCurrentProcess().Id;
 
       var commandLine = new StringBuilder();
-
       if (config.LogLevel != null)
         commandLine.Append($"--log-level={config.LogLevel} ");
 
@@ -286,6 +285,8 @@ namespace JetBrains.Profiler.SelfApi
         commandLine.Append($"\"--log-file={config.LogFile}\" ");
 
       commandLine.Append($"{command} {pid} \"-f={workspaceFile}\"");
+
+      commandLine.Append(" --service-output");
 
       if (config.IsOverwriteWorkspace)
         commandLine.Append(" --overwrite");
@@ -376,10 +377,8 @@ namespace JetBrains.Profiler.SelfApi
         if (_consoleProfiler.IsApiUsed)
           MemoryProfiler.GetSnapshot(name);
         else
-        {
           _consoleProfiler.Send("get-snapshot", "name", name);
-          _consoleProfiler.AwaitResponse("snapshot-saved", -1);
-        }
+        _consoleProfiler.AwaitResponse("snapshot-saved", -1);
         return this;
       }
 
