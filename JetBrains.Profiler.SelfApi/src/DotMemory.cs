@@ -378,7 +378,7 @@ namespace JetBrains.Profiler.SelfApi
           MemoryProfiler.GetSnapshot(name);
         else
           _consoleProfiler.Send("get-snapshot", "name", name);
-        _consoleProfiler.AwaitResponse("snapshot-saved", -1);
+        _consoleProfiler.AwaitResponse("snapshot-saved", ConsoleProfiler.InfiniteTimeout);
         return this;
       }
 

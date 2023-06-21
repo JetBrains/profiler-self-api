@@ -526,7 +526,7 @@ namespace JetBrains.Profiler.SelfApi
           MeasureProfiler.SaveData();
         else
           _consoleProfiler.Send("get-snapshot");
-        _consoleProfiler.AwaitResponse("(?:snapshot-saved|get-snapshot-error)", -1);
+        _consoleProfiler.AwaitResponse("(?:snapshot-saved|get-snapshot-error)", ConsoleProfiler.InfiniteTimeout);
         return this;
       }
 
@@ -567,7 +567,7 @@ namespace JetBrains.Profiler.SelfApi
 
       public Session AwaitConnected()
       {
-        _consoleProfiler.AwaitResponse("ready", -1);
+        _consoleProfiler.AwaitResponse("ready", ConsoleProfiler.InfiniteTimeout);
         if(_consoleProfiler.IsApiUsed)
           _consoleProfiler.AwaitConnected(_operationTimeout);
         else

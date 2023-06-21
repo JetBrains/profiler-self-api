@@ -10,6 +10,8 @@ namespace JetBrains.Profiler.SelfApi.Impl
 {
   internal sealed class ConsoleProfiler
   {
+    public const int InfiniteTimeout = -1;
+
     private readonly Process _process;
     private readonly string _prefix;
     private readonly string _presentableName;
@@ -103,7 +105,7 @@ namespace JetBrains.Profiler.SelfApi.Impl
         if (_process.HasExited)
           return null;
 
-        if (milliseconds >= 0 && stopwatch.ElapsedMilliseconds > milliseconds)
+        if (!IsInfiniteTimeout(milliseconds) && stopwatch.ElapsedMilliseconds > milliseconds)
           return null;
 
         Thread.Sleep(40);
@@ -115,11 +117,19 @@ namespace JetBrains.Profiler.SelfApi.Impl
       return new Regex($@"{_prefix}\[\x22{command}\x22(?:,\s*\{{{argument}\}})?\]", RegexOptions.Compiled | RegexOptions.IgnoreCase);
     }
 
-    public bool AwaitResponse(string command, int milliseconds)
+    public void AwaitResponse(string command, int milliseconds)
     {
       var regex = BuildCommandRegex(command, ".*");
-      return WaitFor(regex, milliseconds) != null;
+      if (WaitFor(regex, milliseconds) == null)
+      {
+        if (_process.HasExited)
+          throw BuildException($"{_presentableName} has exited unexpectedly. See details below.");
+        if(!IsInfiniteTimeout(milliseconds))
+          throw BuildException($"The command {command} for {_presentableName} has not finished in the given time ({milliseconds} ms).");
+      }
     }
+
+    private static bool IsInfiniteTimeout(int milliseconds) => milliseconds <= InfiniteTimeout;
 
     public void Send(string command, params string[] args)
     {
@@ -194,7 +204,7 @@ namespace JetBrains.Profiler.SelfApi.Impl
         if (_process.HasExited)
           throw BuildException($"{_presentableName} has exited unexpectedly. See details below.");
 
-        if (milliseconds >= 0 && stopwatch.ElapsedMilliseconds > milliseconds)
+        if (!IsInfiniteTimeout(milliseconds) && stopwatch.ElapsedMilliseconds > milliseconds)
           throw BuildException($"Profiler.Api was not ready in given time ({milliseconds} ms). Try increasing the profiler response timeout using UseCustomResponseTimeout.");
 
         Thread.Sleep(40);
