@@ -187,6 +187,8 @@ namespace JetBrains.Profiler.SelfApi.Impl
       if (!_process.WaitForExit(milliseconds))
         throw BuildException($"{_presentableName} has not finished in the given time ({milliseconds} ms). Try increasing the profiler response timeout using UseCustomResponseTimeout.");
 
+      _process.WaitForExit();
+
       if (_process.ExitCode != 0)
         throw BuildException($"{_presentableName} has failed. See details below.");
     }
