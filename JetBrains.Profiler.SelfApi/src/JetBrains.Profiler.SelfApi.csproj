@@ -19,7 +19,7 @@ ATTENTION: Note that for its work JetBrains Self-Profiling API uses the JetBrain
     <PackageReleaseNotes>Supported OSs:
     • Windows 7 x86/x64 and later, Windows 11 x86/x64/ARM64 and later
     • macOS 10.12 Sierra x64 and later, macOS 11.0 Big Sur x64/ARM64 and later
-    • Linux Glibc/Musl x64/ARM/ARM64 (most distributions like Alpine, CentOS, Debian, Fedora, Ubuntu and derivatives)
+    • Linux Glibc/Musl x64/ARM/ARM64 (most distributions like Alpine, CentOS, Debian, Fedora, Ubuntu, Red Hat and derivatives)
 Supported frameworks:
     • .NET Framework 4.6 and later
     • .NET Core 3.0 and later
@@ -28,14 +28,14 @@ Supported frameworks:
     <PackageProjectUrl>https://github.com/JetBrains/profiler-self-api/blob/master/README.md</PackageProjectUrl>
     <PackageIcon>icon.png</PackageIcon>
     <PackageTags>jetbrains profiler profiling memory performance net dotnet netcore dotnetcore netstandard windows uwp macos mac linux musl glibc x86 x64 arm64 x86-64 x86_64 aarch64</PackageTags>
-    <Version>2.5.0</Version>
+    <Version>2.5.1</Version>
   </PropertyGroup>
   <ItemGroup>
     <None Include="../../icon.png" Pack="true" Visible="false" PackagePath="" />
   </ItemGroup>
   <ItemGroup>
     <PackageReference Include="JetBrains.HabitatDetector" Version="1.1.0" />
-    <PackageReference Include="JetBrains.Profiler.Api" Version="1.4.0" />
+    <PackageReference Include="JetBrains.Profiler.Api" Version="1.4.1" />
     <PackageReference Include="JetBrains.Annotations" Version="2023.3.0" PrivateAssets="All" />
     <PackageReference Include="Microsoft.NETFramework.ReferenceAssemblies" Version="1.0.3" PrivateAssets="All" />
     <Reference Condition="'$(TargetFramework)' == 'net46'" Include="System.IO.Compression" />
