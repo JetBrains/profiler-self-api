@@ -34,9 +34,9 @@ Supported frameworks:
     <None Include="../../icon.png" Pack="true" Visible="false" PackagePath="" />
   </ItemGroup>
   <ItemGroup>
-    <PackageReference Include="JetBrains.HabitatDetector" Version="1.0.2" />
+    <PackageReference Include="JetBrains.HabitatDetector" Version="1.1.0" />
     <PackageReference Include="JetBrains.Profiler.Api" Version="1.4.0" />
-    <PackageReference Include="JetBrains.Annotations" Version="2022.3.1" PrivateAssets="All" />
+    <PackageReference Include="JetBrains.Annotations" Version="2023.3.0" PrivateAssets="All" />
     <PackageReference Include="Microsoft.NETFramework.ReferenceAssemblies" Version="1.0.3" PrivateAssets="All" />
     <Reference Condition="'$(TargetFramework)' == 'net46'" Include="System.IO.Compression" />
     <Reference Condition="'$(TargetFramework)' == 'net46'" Include="System.Net.Http" />
