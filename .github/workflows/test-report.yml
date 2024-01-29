@@ -10,7 +10,8 @@ permissions:
   checks: write
 
 jobs:
-  report:
+  net:
+    name: .NET
 
     runs-on: ubuntu-latest
 
