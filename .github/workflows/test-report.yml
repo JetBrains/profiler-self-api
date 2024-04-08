@@ -1,8 +1,8 @@
-name: net-test-report
+name: Generate test reports
 
 on:
   workflow_run:
-    workflows: ['net']
+    workflows: [ 'Build and run tests' ]
     types:
       - completed
 
@@ -16,10 +16,11 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    - uses: dorny/test-reporter@v1
-      with:
-        artifact: /test-results-(.*)/
-        name: test-report ($1)
-        path: '**/*.trx'
-        reporter: dotnet-trx
-        list-tests: failed
+      - name: Generate test report
+        uses: dorny/test-reporter@v1
+        with:
+          name: .NET test report ($1)
+          artifact: /net-test-results-(.*)/
+          path: '**/*.trx'
+          reporter: dotnet-trx
+          list-tests: failed
