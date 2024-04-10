@@ -42,12 +42,6 @@ namespace JetBrains.Profiler.SelfApi.Impl
       _downloadTask = null;
       _downloadTo = downloadTo;
 
-      if (TryGetRunner(downloadTo, out _))
-      {
-        Trace.Verbose($"Prerequisite[{Name}].DownloadAsync: Runner found, no async task needed.");
-        return _downloadTask = Task.FromResult(Missing.Value);
-      }
-
       if (nugetUrl == null)
         nugetUrl = NuGet.GetDefaultUrl(nugetApi);
 
@@ -58,7 +52,7 @@ namespace JetBrains.Profiler.SelfApi.Impl
     public void VerifyReady()
     {
       if (_downloadTask == null || !_downloadTask.Wait(40))
-        throw new InvalidOperationException("The prerequisite isn't ready, call DownloadAsync() first.");
+        throw new InvalidOperationException($"The prerequisite isn't ready, you must call one of the methods from the {GetPrepareMethodPrefix()} family first.");
     }
 
     public string GetRunnerPath()
@@ -215,6 +209,26 @@ namespace JetBrains.Profiler.SelfApi.Impl
       }
     }
 
+    public bool CheckLocalBinaryFolder(string folderPath)
+    {
+      if (!TryGetRunner(folderPath, out _))
+      {
+        Trace.Verbose($"Prerequisite[{Name}].CheckLocalBinaryFolder: Runner wasn't found.");
+        return false;
+      }
+
+      Trace.Verbose($"Prerequisite[{Name}].CheckLocalBinaryFolder: Runner was found.");
+      _downloadTo = folderPath;
+      _downloadTask = Task.FromResult(Missing.Value);
+      return true;
+    }
+
+    public void AssertLocalBinaryFolder(string folderPath)
+    {
+      if (!CheckLocalBinaryFolder(folderPath))
+        throw new InvalidOperationException($"The {Name} console profiler was not found at {folderPath}.");
+    }
+
     private bool TryGetRunner(string prerequisitePath, out string runnerPath)
     {
       var runnerName = GetRunnerName();
@@ -291,6 +305,8 @@ namespace JetBrains.Profiler.SelfApi.Impl
 
     protected abstract long GetEstimatedSize();
 
+    protected abstract string GetPrepareMethodPrefix();
+
     private static string GetDefaultDownloadPath()
     {
       return Path.Combine(Path.GetTempPath(), "JetBrains", "Profiler", "SelfApi");
@@ -323,7 +339,7 @@ namespace JetBrains.Profiler.SelfApi.Impl
 
         var percents = bytesCopied < estimatedLength ? bytesCopied * 100.0 / estimatedLength : 100;
         progress.Report(percents);
-        
+
         cancellationToken.ThrowIfCancellationRequested();
       }
     }

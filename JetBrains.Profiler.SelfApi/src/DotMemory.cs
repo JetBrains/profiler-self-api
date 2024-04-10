@@ -2,6 +2,7 @@ using System;
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.IO;
+using System.Reflection;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
@@ -14,12 +15,12 @@ namespace JetBrains.Profiler.SelfApi
   /// <summary>
   /// The API lets you initiate and control profiling sessions right from the code of your application.
   /// For example, this can be helpful for profiling the application on end-user desktops or production servers.
-  /// The API uses the dotMemory.exe command-line profiler (the tool is downloaded automatically)
+  /// The API uses the dotMemory command-line profiler (the tool is downloaded automatically)
   /// </summary>
   /// <remarks>
   /// Use case 1: ad-hoc profiling <br/>
   /// * install the JetBrains.Profiler.SelfApi package to your project<br/>
-  /// * to initialize the API, call DotMemory.EnsurePrerequisite()<br/>
+  /// * to initialize the API, call DotMemory.Init()<br/>
   /// * to get just one memory snapshot, call DotMemory.GetSnapshotOnce<br/>
   /// * or in case you need several snapshots, call Attach/GetSnapshot*/Detach<br/>
   /// * deploy your application<br/>
@@ -28,7 +29,7 @@ namespace JetBrains.Profiler.SelfApi
   ///<br/>
   /// Use case 2: self-profiling as a part of troubleshooting on a production server<br/>
   /// * install the JetBrains.Profiler.SelfApi package to your project<br/>
-  /// * in handler of awesome `Gather trouble report` action call DotMemory.EnsurePrerequisite()<br/>
+  /// * in handler of awesome `Gather trouble report` action call DotMemory.Init()<br/>
   /// * to get a memory snapshot, call DotMemory.GetSnapshotOnce<br/>
   /// * include the generated workspace with snapshots into the report<br/>
   /// </remarks>
@@ -110,7 +111,55 @@ namespace JetBrains.Profiler.SelfApi
     private static Session _session;
 
     /// <summary>
-    /// Makes sure that the dotMemory.exe command-line profiler is downloaded and is ready to use.
+    /// The self-profiling API requires the dotMemory command-line profiler <inheritdoc cref="CommandLineToolsConfig.NupkgVersion"/> for its work.<br/>
+    /// This method:<br/>
+    /// 1. Checks whether the new command-line profiler version is available at the online NuGet registry.<br/>
+    /// 2. If necessary, downloads the `JetBrains.dotMemory.Console` NuGet package to the <paramref name="downloadTo"/> folder.<br/>
+    /// 3. Initializes the profiler.<br/>
+    /// You should call this or another Init method before any other method of the self-profiling API.
+    /// </summary>
+    /// <remarks>
+    /// This method requires access to the internet. In isolated environments, use <see cref="InitOffline"/>.
+    /// </remarks>
+    /// <param name="cancellationToken">Cancellation token</param>
+    /// <param name="progress">Download progress callback from 0.0 to 100.0. If null, progress is not reported.</param>
+    /// <param name="nugetUrl">URL of NuGet mirror. If null, www.nuget.org is used.</param>
+    /// <param name="nugetApi">NuGet API version.</param>
+    /// <param name="downloadTo">NuGet download destination folder. If null, %LocalAppData% is used.</param>
+    public static Task InitAsync(CancellationToken cancellationToken, IProgress<double> progress = null, Uri nugetUrl = null, NuGetApi nugetApi = NuGetApi.V3, string downloadTo = null)
+    {
+      lock (Mutex)
+        return ConsoleRunnerPackage.DownloadAsync(nugetUrl, nugetApi, downloadTo, progress, cancellationToken);
+    }
+
+    /// <summary>
+    /// The self-profiling API requires the dotMemory command-line profiler <inheritdoc cref="CommandLineToolsConfig.NupkgVersion"/> for its work.<br/>
+    /// This method checks that the profiler is located at <see cref="commandLineToolsFolder"/> and initializes the profiler.<br/>
+    /// You should call this or another Init method before any other method of the self-profiling API.<br/>
+    /// </summary>
+    /// <remarks>
+    /// Use this method only if your computer doesn't have access to the internet, and you want to use the locally installed command-line profiler.<br/>
+    /// Otherwise, use <see cref="Init"/> or <see cref="InitAsync(System.IProgress{double},System.Uri,JetBrains.Profiler.SelfApi.NuGetApi,string)"/>.
+    /// </remarks>
+    /// <param name="commandLineToolsFolder">Folder with the command-line profiler</param>
+    public static void InitOffline(string commandLineToolsFolder)
+      => ConsoleRunnerPackage.AssertLocalBinaryFolder(commandLineToolsFolder);
+
+    /// <summary>
+    /// It's the shortcut for <c>InitAsync(CancellationToken.None, progress: null, nugetUrl, prerequisitePath).Wait()</c>
+    /// </summary>
+    public static void Init(Uri nugetUrl = null, NuGetApi nugetApi = NuGetApi.V3, string downloadTo = null)
+      => InitAsync(CancellationToken.None, null, nugetUrl, nugetApi, downloadTo).Wait();
+
+    /// <summary>
+    /// It's the shortcut for <c>InitAsync(CancellationToken.None, progress, nugetUrl, prerequisitePath)</c>
+    /// </summary>
+    public static Task InitAsync(IProgress<double> progress = null, Uri nugetUrl = null, NuGetApi nugetApi = NuGetApi.V3, string downloadTo = null)
+      => InitAsync(CancellationToken.None, progress, nugetUrl, nugetApi, downloadTo);
+
+    /// <summary>
+    /// This method is obsolete, use <see cref="InitAsync(System.Threading.CancellationToken,System.IProgress{double},System.Uri,JetBrains.Profiler.SelfApi.NuGetApi,string)"/> or <see cref="InitOffline"/> instead<br/>
+    /// It makes sure that the dotMemory command-line profiler is downloaded and is ready to use.
     /// </summary>
     /// <remarks>
     /// 1. Looks for command-line profiler in the <paramref name="downloadTo"/> folder (if specified). Uses it if it's found.<br/>
@@ -125,6 +174,7 @@ namespace JetBrains.Profiler.SelfApi
     /// <param name="nugetUrl">URL of NuGet mirror. If null, www.nuget.org is used.</param>
     /// <param name="nugetApi">NuGet API version.</param>
     /// <param name="downloadTo">NuGet download destination folder. If null, %LocalAppData% is used.</param>
+    [Obsolete("Use " + nameof(InitAsync) + " or " + nameof(InitOffline) + " instead")]
     public static Task EnsurePrerequisiteAsync(
       CancellationToken cancellationToken,
       IProgress<double> progress = null,
@@ -133,12 +183,19 @@ namespace JetBrains.Profiler.SelfApi
       string downloadTo = null)
     {
       lock (Mutex)
+      {
+        if (ConsoleRunnerPackage.CheckLocalBinaryFolder(downloadTo))
+          return Task.FromResult(Missing.Value);
+
         return ConsoleRunnerPackage.DownloadAsync(nugetUrl, nugetApi, downloadTo, progress, cancellationToken);
+      }
     }
 
     /// <summary>
-    /// The shortcut for <c>EnsurePrerequisiteAsync(CancellationToken.None, progress, nugetUrl, prerequisitePath)</c>
+    /// This method is obsolete, use <see cref="InitAsync(System.Threading.CancellationToken,System.IProgress{double},System.Uri,JetBrains.Profiler.SelfApi.NuGetApi,string)"/> or <see cref="InitOffline"/> instead<br/>
+    /// It's the shortcut for <c>EnsurePrerequisiteAsync(CancellationToken.None, progress, nugetUrl, prerequisitePath)</c>
     /// </summary>
+    [Obsolete("Use " + nameof(InitAsync) + " or " + nameof(InitOffline) + " instead")]
     public static Task EnsurePrerequisiteAsync(
       IProgress<double> progress = null,
       Uri nugetUrl = null,
@@ -149,8 +206,10 @@ namespace JetBrains.Profiler.SelfApi
     }
 
     /// <summary>
-    /// The shortcut for <c>EnsurePrerequisiteAsync(CancellationToken.None, progress: null, nugetUrl, prerequisitePath).Wait()</c>
+    /// This method is obsolete, use <see cref="Init"/> or <see cref="InitOffline"/> instead<br/>
+    /// It's the shortcut for <c>EnsurePrerequisiteAsync(CancellationToken.None, progress: null, nugetUrl, prerequisitePath).Wait()</c>
     /// </summary>
+    [Obsolete("Use " + nameof(Init) + " or " + nameof(InitOffline) + " instead")]
     public static void EnsurePrerequisite(
       Uri nugetUrl = null,
       NuGetApi nugetApi = NuGetApi.V3,
@@ -344,6 +403,8 @@ namespace JetBrains.Profiler.SelfApi
       {
         return 20 * 1024 * 1024;
       }
+
+      protected override string GetPrepareMethodPrefix() => nameof(Init);
     }
 
     private sealed class Session

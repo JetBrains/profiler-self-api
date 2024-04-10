@@ -8,6 +8,7 @@ using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading;
 using System.IO.Compression;
+using System.Reflection;
 using System.Threading.Tasks;
 using JetBrains.HabitatDetector;
 using JetBrains.Profiler.Api;
@@ -23,7 +24,7 @@ namespace JetBrains.Profiler.SelfApi
   /// <remarks>
   /// Use case: ad-hoc profiling <br/>
   /// * Install the JetBrains.Profiler.SelfApi package to your project<br/>
-  /// * To initialize the API, call DotTrace.EnsurePrerequisite()<br/>
+  /// * To initialize the API, call DotTrace.Init()<br/>
   /// * To start collecting data, call DotTrace.StartCollectingData()
   /// * To save collected data into snapshot, call DotTrace.SaveData<br/>
   /// * In case you need several snapshots, call DotTrace.StartCollectingData and DotTrace.SaveData once more<br/>
@@ -121,20 +122,68 @@ namespace JetBrains.Profiler.SelfApi
     private static int _packedInZipCount;
 
     /// <summary>
-    /// Makes sure that the dotTrace command-line profiler is downloaded and is ready to use.
+    /// The self-profiling API requires the dotTrace command-line profiler <inheritdoc cref="CommandLineToolsConfig.NupkgVersion"/> for its work.<br/>
+    /// This method:<br/>
+    /// 1. Checks whether the new command-line profiler version is available at the online NuGet registry.<br/>
+    /// 2. If necessary, downloads the `JetBrains.dotTrace.CommandLineTools` NuGet package to the <paramref name="downloadTo"/> folder.<br/>
+    /// 3. Initializes the profiler.<br/>
+    /// You should call this or another Init method before any other method of the self-profiling API.
+    /// </summary>
+    /// <remarks>
+    /// This method requires access to the internet. In isolated environments, use <see cref="InitOffline"/>.
+    /// </remarks>
+    /// <param name="cancellationToken">Cancellation token</param>
+    /// <param name="progress">Download progress callback from 0.0 to 100.0. If null, progress is not reported.</param>
+    /// <param name="nugetUrl">URL of NuGet mirror. If null, www.nuget.org is used.</param>
+    /// <param name="nugetApi">NuGet API version.</param>
+    /// <param name="downloadTo">NuGet download destination folder. If null, %LocalAppData% is used.</param>
+    public static Task InitAsync(CancellationToken cancellationToken, IProgress<double> progress = null, Uri nugetUrl = null, NuGetApi nugetApi = NuGetApi.V3, string downloadTo = null)
+    {
+      lock (Mutex)
+        return ConsoleRunnerPackage.DownloadAsync(nugetUrl, nugetApi, downloadTo, progress, cancellationToken);
+    }
+
+    /// <summary>
+    /// The self-profiling API requires the dotTrace command-line profiler <inheritdoc cref="CommandLineToolsConfig.NupkgVersion"/> for its work.<br/>
+    /// This method checks that the profiler is located at <see cref="commandLineToolsFolder"/> and initializes the profiler.<br/>
+    /// You should call this or another Init method before any other method of the self-profiling API.<br/>
+    /// </summary>
+    /// <remarks>
+    /// Use this method only if your computer doesn't have access to the internet, and you want to use the locally installed command-line profiler.<br/>
+    /// Otherwise, use <see cref="Init"/> or <see cref="InitAsync(System.IProgress{double},System.Uri,JetBrains.Profiler.SelfApi.NuGetApi,string)"/>.
+    /// </remarks>
+    /// <param name="commandLineToolsFolder">Folder with the command-line profiler</param>
+    public static void InitOffline(string commandLineToolsFolder)
+      => ConsoleRunnerPackage.AssertLocalBinaryFolder(commandLineToolsFolder);
+
+    /// <summary>
+    /// It's the shortcut for <c>InitAsync(CancellationToken.None, progress: null, nugetUrl, prerequisitePath).Wait()</c>
+    /// </summary>
+    public static void Init(Uri nugetUrl = null, NuGetApi nugetApi = NuGetApi.V3, string downloadTo = null)
+      => InitAsync(CancellationToken.None, null, nugetUrl, nugetApi, downloadTo).Wait();
+
+    /// <summary>
+    /// It's the shortcut for <c>InitAsync(CancellationToken.None, progress, nugetUrl, prerequisitePath)</c>
+    /// </summary>
+    public static Task InitAsync(IProgress<double> progress = null, Uri nugetUrl = null, NuGetApi nugetApi = NuGetApi.V3, string downloadTo = null)
+      => InitAsync(CancellationToken.None, progress, nugetUrl, nugetApi, downloadTo);
+
+    /// <summary>
+    /// This method is obsolete, use <see cref="InitAsync(System.Threading.CancellationToken,System.IProgress{double},System.Uri,JetBrains.Profiler.SelfApi.NuGetApi,string)"/> or <see cref="InitOffline"/> instead<br/>
+    /// It makes sure that the dotTrace command-line profiler is downloaded and is ready to use.
     /// </summary>
     /// <remarks>
     /// 1. Looks for dotTrace executable in the same directory with the running assembly. Uses it if it's found.<br/>
     /// 2. Downloads `JetBrains.dotTrace.CommandLineTools` NuGet package into the <paramref name="downloadTo"/>
     /// directory and uses the dotTrace command-line profiler from this package. The package version is defined by <see cref="CommandLineToolsConfig.NupkgVersion"/>.
     /// The command-line profiler is saved to `{downloadTo}/dotTrace.{NupkgVersion}`
-    /// If the executable file exists, a new one is not downloaded.
     /// </remarks>
     /// <param name="cancellationToken">Cancellation token</param>
     /// <param name="progress">Download progress callback from 0.0 to 100.0. If null, progress is not reported.</param>
     /// <param name="nugetUrl">URL of NuGet mirror. If null, www.nuget.org is used.</param>
     /// <param name="nugetApi">NuGet API version.</param>
     /// <param name="downloadTo">NuGet download destination directory. If null, %LocalAppData% is used.</param>
+    [Obsolete("Use " + nameof(InitAsync) + " or " + nameof(InitOffline) + " instead")]
     public static Task EnsurePrerequisiteAsync(
       CancellationToken cancellationToken,
       IProgress<double> progress = null,
@@ -143,12 +192,19 @@ namespace JetBrains.Profiler.SelfApi
       string downloadTo = null)
     {
       lock (Mutex)
+      {
+        if (ConsoleRunnerPackage.CheckLocalBinaryFolder(downloadTo))
+          return Task.FromResult(Missing.Value);
+
         return ConsoleRunnerPackage.DownloadAsync(nugetUrl, nugetApi, downloadTo, progress, cancellationToken);
+      }
     }
 
     /// <summary>
-    /// The shortcut for <c>EnsurePrerequisiteAsync(CancellationToken.None, progress, nugetUrl, prerequisitePath)</c>
+    /// This method is obsolete, use <see cref="InitAsync(System.Threading.CancellationToken,System.IProgress{double},System.Uri,JetBrains.Profiler.SelfApi.NuGetApi,string)"/> or <see cref="InitOffline"/> instead<br/>
+    /// It's the shortcut for <c>EnsurePrerequisiteAsync(CancellationToken.None, progress, nugetUrl, prerequisitePath)</c>
     /// </summary>
+    [Obsolete("Use " + nameof(InitAsync) + " or " + nameof(InitOffline) + " instead")]
     public static Task EnsurePrerequisiteAsync(
       IProgress<double> progress = null,
       Uri nugetUrl = null,
@@ -159,8 +215,10 @@ namespace JetBrains.Profiler.SelfApi
     }
 
     /// <summary>
-    /// The shortcut for <c>EnsurePrerequisiteAsync(CancellationToken.None, progress: null, nugetUrl, prerequisitePath).Wait()</c>
+    /// This method is obsolete, use <see cref="Init"/> or <see cref="InitOffline"/> instead<br/>
+    /// It's the shortcut for <c>EnsurePrerequisiteAsync(CancellationToken.None, progress: null, nugetUrl, prerequisitePath).Wait()</c>
     /// </summary>
+    [Obsolete("Use " + nameof(Init) + " or " + nameof(InitOffline) + " instead")]
     public static void EnsurePrerequisite(
       Uri nugetUrl = null,
       NuGetApi nugetApi = NuGetApi.V3,
@@ -493,6 +551,8 @@ namespace JetBrains.Profiler.SelfApi
       {
         return 30 * 1024 * 1024;
       }
+
+      protected override string GetPrepareMethodPrefix() => nameof(Init);
     }
 
     private sealed class Session
