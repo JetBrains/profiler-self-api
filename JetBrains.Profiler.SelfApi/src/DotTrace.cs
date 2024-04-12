@@ -193,7 +193,7 @@ namespace JetBrains.Profiler.SelfApi
     {
       lock (Mutex)
       {
-        if (ConsoleRunnerPackage.CheckLocalBinaryFolder(downloadTo))
+        if (ConsoleRunnerPackage.CheckLocalBinaryFolder(string.IsNullOrEmpty(downloadTo) ? PrerequisiteBase.GetNearbyPath() : downloadTo))
           return Task.FromResult(Missing.Value);
 
         return ConsoleRunnerPackage.DownloadAsync(nugetUrl, nugetApi, downloadTo, progress, cancellationToken);

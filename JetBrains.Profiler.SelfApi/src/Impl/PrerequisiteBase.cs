@@ -19,6 +19,7 @@ namespace JetBrains.Profiler.SelfApi.Impl
 
     private Task _downloadTask;
     private string _downloadTo;
+    private string _runnerPath;
 
     protected PrerequisiteBase(string name, NuGet.SemanticVersion semanticVersion)
     {
@@ -45,24 +46,20 @@ namespace JetBrains.Profiler.SelfApi.Impl
       if (nugetUrl == null)
         nugetUrl = NuGet.GetDefaultUrl(nugetApi);
 
-      Trace.Verbose($"Prerequisite[{Name}].DownloadAsync: Runner not found, starting download...");
+      Trace.Verbose($"Prerequisite[{Name}].DownloadAsync: Runner not found, starting downloading...");
       return _downloadTask = DoDownloadAsync(nugetUrl, nugetApi, downloadTo, progress, cancellationToken);
     }
 
     public void VerifyReady()
     {
-      if (_downloadTask == null || !_downloadTask.Wait(40))
+      if (_downloadTask == null || !_downloadTask.Wait(40) || _runnerPath == null)
         throw new InvalidOperationException($"The prerequisite isn't ready, you must call one of the methods from the {GetPrepareMethodPrefix()} family first.");
     }
 
     public string GetRunnerPath()
     {
       VerifyReady();
-
-      if (!TryGetRunner(_downloadTo, out var runnerPath) && !TryGetRunnerEx(_downloadTo, out runnerPath))
-        throw new InvalidOperationException($"Something went wrong: the {Name} console profiler not found.");
-
-      return runnerPath;
+      return _runnerPath;
     }
 
     private async Task DoDownloadAsync(
@@ -100,7 +97,7 @@ namespace JetBrains.Profiler.SelfApi.Impl
           nupkgFolder = Path.Combine(downloadTo, Name, latestVersion);
           readyMarker = Path.Combine(nupkgFolder, ".ready");
 
-          if (File.Exists(readyMarker))
+          if (File.Exists(readyMarker) && TryGetDownloadedRunner(downloadTo, out _runnerPath))
           {
             Trace.Verbose("Prerequisite.Download: Package version `{0}` already downloaded.", latestVersion);
             return;
@@ -178,8 +175,11 @@ namespace JetBrains.Profiler.SelfApi.Impl
         Trace.Verbose("Prerequisite.Download: Cleaning up...");
         File.Delete(nupkgPath);
 
+        if(!TryGetDownloadedRunner(downloadTo, out _runnerPath))
+          throw new InvalidOperationException($"Something went wrong: the {Name} console profiler not found.");
+
         new FileStream(readyMarker, FileMode.Create).Dispose();
-        Trace.Verbose("Prerequisite.Download: Confirmed everything ready to use.");
+        Trace.Verbose("Prerequisite.Download: Confirmed everything is ready to use.");
       }
       catch (HttpRequestException e)
       {
@@ -211,16 +211,16 @@ namespace JetBrains.Profiler.SelfApi.Impl
 
     public bool CheckLocalBinaryFolder(string folderPath)
     {
-      if (!TryGetRunner(folderPath, out _))
+      if (TryGetRunnerAtPath(folderPath, out _runnerPath))
       {
-        Trace.Verbose($"Prerequisite[{Name}].CheckLocalBinaryFolder: Runner wasn't found.");
-        return false;
+        Trace.Verbose($"Prerequisite[{Name}].CheckLocalBinaryFolder: Runner was found.");
+        _downloadTo = folderPath;
+        _downloadTask = Task.FromResult(Missing.Value);
+        return true;
       }
 
-      Trace.Verbose($"Prerequisite[{Name}].CheckLocalBinaryFolder: Runner was found.");
-      _downloadTo = folderPath;
-      _downloadTask = Task.FromResult(Missing.Value);
-      return true;
+      Trace.Verbose($"Prerequisite[{Name}].CheckLocalBinaryFolder: Runner wasn't found.");
+      return false;
     }
 
     public void AssertLocalBinaryFolder(string folderPath)
@@ -229,53 +229,50 @@ namespace JetBrains.Profiler.SelfApi.Impl
         throw new InvalidOperationException($"The {Name} console profiler was not found at {folderPath}.");
     }
 
-    private bool TryGetRunner(string prerequisitePath, out string runnerPath)
+    private bool TryGetRunnerAtPath(string profilerLocalPath, out string runnerPath)
     {
       var runnerName = GetRunnerName();
-      Trace.Verbose("Prerequisite.TryGetRunner: `{0}`", runnerName);
+      Trace.Verbose("Prerequisite.TryGetRunnerAtPath: `{0}`", runnerName);
 
-      if (!string.IsNullOrEmpty(prerequisitePath))
+      if (!string.IsNullOrEmpty(profilerLocalPath))
       {
-        runnerPath = Path.Combine(prerequisitePath, runnerName);
-        Trace.Verbose("Prerequisite.TryGetRunner: External path provided, looking at `{0}`", runnerPath);
-        return File.Exists(runnerPath);
+        runnerPath = Path.Combine(profilerLocalPath, runnerName);
+        Trace.Verbose("Prerequisite.TryGetRunnerAtPath: Looking at `{0}`", runnerPath);
+        if (File.Exists(runnerPath))
+          return true;
       }
 
-      runnerPath = Path.Combine(GetNearbyPath(), runnerName);
-      Trace.Verbose("Prerequisite.TryGetRunner: Looking at `{0}`", runnerPath);
-      if (File.Exists(runnerPath))
-        return true;
-
-      Trace.Verbose("Prerequisite.TryGetRunner: No runner found.");
+      runnerPath = null;
+      Trace.Verbose("Prerequisite.TryGetRunnerAtPath: No runner found.");
       return false;
     }
 
-    private bool TryGetRunnerEx(string prerequisitePath, out string runnerPath)
+    private bool TryGetDownloadedRunner(string downloadPath, out string runnerPath)
     {
       runnerPath = null;
       var runnerName = GetRunnerName();
-      Trace.Verbose("Prerequisite.TryGetRunnerEx: `{0}`", runnerName);
+      Trace.Verbose("Prerequisite.TryGetDownloadedRunner: `{0}`", runnerName);
 
-      if (string.IsNullOrEmpty(prerequisitePath))
-        prerequisitePath = GetDefaultDownloadPath();
+      if (string.IsNullOrEmpty(downloadPath))
+        downloadPath = GetDefaultDownloadPath();
 
-      prerequisitePath = Path.Combine(prerequisitePath, Name);
+      downloadPath = Path.Combine(downloadPath, Name);
 
-      Trace.Verbose("Prerequisite.TryGetRunnerEx: Looking for latest version at `{0}`...", prerequisitePath);
+      Trace.Verbose("Prerequisite.TryGetDownloadedRunner: Looking for latest version at `{0}`...", downloadPath);
 
-      if (!Directory.Exists(prerequisitePath))
+      if (!Directory.Exists(downloadPath))
       {
-        Trace.Verbose("Prerequisite.TryGetRunnerEx: No runner found.");
+        Trace.Verbose("Prerequisite.TryGetDownloadedRunner: No runner found.");
         return false;
       }
 
       var packageVersion2 = SemanticVersion.Version2;
       string latestOriginal = null; // the latest found version including build meta-info
       NuGet.SemanticVersion latest = null; // the latest parsed version w/o meta-info
-      foreach (var versionFolder in Directory.GetDirectories(prerequisitePath))
+      foreach (var versionFolder in Directory.GetDirectories(downloadPath))
       {
         var sVer = Path.GetFileName(versionFolder);
-        Trace.Verbose("Prerequisite.TryGetRunnerEx:   {0}", sVer);
+        Trace.Verbose("Prerequisite.TryGetDownloadedRunner:   {0}", sVer);
 
         var ver = NuGet.SemanticVersion.TryParse(sVer);
         if (ver == null || ver.Version2 != packageVersion2)
@@ -290,12 +287,12 @@ namespace JetBrains.Profiler.SelfApi.Impl
 
       if (latestOriginal != null)
       {
-        runnerPath = Path.Combine(prerequisitePath, latestOriginal, runnerName);
-        Trace.Verbose("Prerequisite.TryGetRunnerEx: Checking `{0}`...", runnerPath);
+        runnerPath = Path.Combine(downloadPath, latestOriginal, runnerName);
+        Trace.Verbose("Prerequisite.TryGetDownloadedRunner: Checking `{0}`...", runnerPath);
         return File.Exists(runnerPath);
       }
 
-      Trace.Verbose("Prerequisite.TryGetRunnerEx: No runner found.");
+      Trace.Verbose("Prerequisite.TryGetDownloadedRunner: No runner found.");
       return false;
     }
 
@@ -312,7 +309,7 @@ namespace JetBrains.Profiler.SelfApi.Impl
       return Path.Combine(Path.GetTempPath(), "JetBrains", "Profiler", "SelfApi");
     }
 
-    private static string GetNearbyPath()
+    public static string GetNearbyPath()
     {
       var assembly = Assembly.GetExecutingAssembly();
       return string.IsNullOrEmpty(assembly.Location) ? string.Empty : Path.GetDirectoryName(assembly.Location);
