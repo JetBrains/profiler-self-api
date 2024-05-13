@@ -1,6 +1,6 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
-    <TargetFrameworks>net46;netcoreapp3.1;net7.0</TargetFrameworks>
+    <TargetFrameworks>net46;netcoreapp3.1;net8.0</TargetFrameworks>
     <RootNamespace>JetBrains.Profiler.SelfApi.Tests</RootNamespace>
     <Nullable>enable</Nullable>
     <SignAssembly>true</SignAssembly>
