@@ -80,7 +80,8 @@ namespace JetBrains.Profiler.SelfApi.Impl
         Trace.Info("Prerequisite.Download: targetPath = `{0}`", downloadTo);
         Directory.CreateDirectory(downloadTo);
 
-        var nupkgName = GetPackageName() + "." + HabitatInfo.OSRuntimeIdString;
+        // Note(ww898): Process architecture is inherited by default in macOS ARM64. So use only process architecture!
+        var nupkgName = GetPackageName() + "." + HabitatInfo.ProcessRuntimeIdString;
         string nupkgFolder, nupkgPath, readyMarker;
 
         var downloadProgress = new SubProgress(progress, 0, downloadWeight);
