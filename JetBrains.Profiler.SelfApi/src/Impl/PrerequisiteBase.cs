@@ -80,8 +80,13 @@ namespace JetBrains.Profiler.SelfApi.Impl
         Trace.Info("Prerequisite.Download: targetPath = `{0}`", downloadTo);
         Directory.CreateDirectory(downloadTo);
 
-        // Note(ww898): Process architecture is inherited by default in macOS ARM64. So use only process architecture!
-        var nupkgName = GetPackageName() + "." + HabitatInfo.ProcessRuntimeIdString;
+        // Bug(ww898): The process architecture is inherited by default in macOS ARM64. But we force it to ARM64 on Windows ARM64 even for x64 tools. See https://youtrack.jetbrains.com/issue/NP-1703
+        var runtimeIdString = HabitatInfo.Platform == JetPlatform.MacOsX && HabitatInfo.OSArchitecture == JetArchitecture.Arm64
+          ? HabitatInfo.ProcessRuntimeIdString
+          : HabitatInfo.OSRuntimeIdString;
+
+        var nupkgName = GetPackageName() + "." + runtimeIdString;
+
         string nupkgFolder, nupkgPath, readyMarker;
 
         var downloadProgress = new SubProgress(progress, 0, downloadWeight);
