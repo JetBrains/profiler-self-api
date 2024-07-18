@@ -100,10 +100,10 @@ namespace JetBrains.Profiler.SelfApi.Impl
             .ConfigureAwait(false);
 
           var latestVersion = content.Headers.GetValues("Version").Single();
-          nupkgFolder = Path.Combine(downloadTo, Name, latestVersion);
+          nupkgFolder = Path.Combine(downloadTo, Name, latestVersion, runtimeIdString);
           readyMarker = Path.Combine(nupkgFolder, ".ready");
 
-          if (File.Exists(readyMarker) && TryGetDownloadedRunner(downloadTo, out _runnerPath))
+          if (File.Exists(readyMarker) && TryGetDownloadedRunner(downloadTo, runtimeIdString, out _runnerPath))
           {
             Trace.Verbose("Prerequisite.Download: Package version `{0}` already downloaded.", latestVersion);
             return;
@@ -181,7 +181,7 @@ namespace JetBrains.Profiler.SelfApi.Impl
         Trace.Verbose("Prerequisite.Download: Cleaning up...");
         File.Delete(nupkgPath);
 
-        if(!TryGetDownloadedRunner(downloadTo, out _runnerPath))
+        if(!TryGetDownloadedRunner(downloadTo, runtimeIdString, out _runnerPath))
           throw new InvalidOperationException($"Something went wrong: the {Name} console profiler not found.");
 
         new FileStream(readyMarker, FileMode.Create).Dispose();
@@ -253,7 +253,7 @@ namespace JetBrains.Profiler.SelfApi.Impl
       return false;
     }
 
-    private bool TryGetDownloadedRunner(string downloadPath, out string runnerPath)
+    private bool TryGetDownloadedRunner(string downloadPath, string runtimeIdString, out string runnerPath)
     {
       runnerPath = null;
       var runnerName = GetRunnerName();
@@ -293,7 +293,7 @@ namespace JetBrains.Profiler.SelfApi.Impl
 
       if (latestOriginal != null)
       {
-        runnerPath = Path.Combine(downloadPath, latestOriginal, runnerName);
+        runnerPath = Path.Combine(downloadPath, latestOriginal, runtimeIdString, runnerName);
         Trace.Verbose("Prerequisite.TryGetDownloadedRunner: Checking `{0}`...", runnerPath);
         return File.Exists(runnerPath);
       }
