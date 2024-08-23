@@ -28,14 +28,14 @@ Supported frameworks:
     <PackageProjectUrl>https://github.com/JetBrains/profiler-self-api/blob/master/README.md</PackageProjectUrl>
     <PackageIcon>icon.png</PackageIcon>
     <PackageTags>jetbrains profiler profiling memory performance net dotnet netcore dotnetcore netstandard windows uwp macos mac linux musl glibc x86 x64 arm64 x86-64 x86_64 aarch64</PackageTags>
-    <Version>2.5.9</Version>
+    <Version>2.5.10</Version>
   </PropertyGroup>
   <ItemGroup>
     <None Include="../../icon.png" Pack="true" Visible="false" PackagePath="" />
   </ItemGroup>
   <ItemGroup>
-    <PackageReference Include="JetBrains.HabitatDetector" Version="1.4.1" />
-    <PackageReference Include="JetBrains.Profiler.Api" Version="1.4.6" />
+    <PackageReference Include="JetBrains.HabitatDetector" Version="1.4.2" />
+    <PackageReference Include="JetBrains.Profiler.Api" Version="1.4.7" />
     <PackageReference Include="JetBrains.Annotations" Version="2023.3.0" PrivateAssets="All" />
     <PackageReference Include="Microsoft.NETFramework.ReferenceAssemblies" Version="1.0.3" PrivateAssets="All" />
     <Reference Condition="'$(TargetFramework)' == 'net46'" Include="System.IO.Compression" />
