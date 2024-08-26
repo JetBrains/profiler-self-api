@@ -36,6 +36,9 @@ namespace JetBrains.Profiler.SelfApi.Impl
       var effectiveArguments = isX64ProcessUnderMacOsArm64 ? $"-arm64 \"{executable}\" {arguments}" : arguments;
 
       var commandRegex = BuildCommandRegex("([a-zA-Z-]*)", "(.*)");
+      Trace.Verbose("Starting the process");
+      Trace.Verbose("Executable: {0}", effectiveExecutable);
+      Trace.Verbose("Arguments: {0}", effectiveArguments);
       var si = new ProcessStartInfo
         {
           FileName = effectiveExecutable,
