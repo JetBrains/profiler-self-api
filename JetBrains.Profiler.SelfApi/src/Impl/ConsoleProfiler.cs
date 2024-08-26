@@ -28,11 +28,18 @@ namespace JetBrains.Profiler.SelfApi.Impl
       _presentableName = presentableName;
       _isApiReady = isApiReady;
 
+      // Note(ww898): We force the OS architecture everywhere!!! Process architecture is inherited by default in macOS ARM64. We turn off this behavior for x64 processes with /usr/bin/arch!!!
+      var isX64ProcessUnderMacOsArm64 = HabitatInfo.Platform == JetPlatform.MacOsX &&
+                                        HabitatInfo.OSArchitecture == JetArchitecture.Arm64 &&
+                                        HabitatInfo.ProcessArchitecture == JetArchitecture.X64;
+      var effectiveExecutable = isX64ProcessUnderMacOsArm64 ? "/usr/bin/arch" : executable;
+      var effectiveArguments = isX64ProcessUnderMacOsArm64 ? $"-arm64 \"{executable}\" {arguments}" : arguments;
+
       var commandRegex = BuildCommandRegex("([a-zA-Z-]*)", "(.*)");
       var si = new ProcessStartInfo
         {
-          FileName = executable,
-          Arguments = arguments,
+          FileName = effectiveExecutable,
+          Arguments = effectiveArguments,
           CreateNoWindow = true,
           UseShellExecute = false,
           RedirectStandardInput = true,
