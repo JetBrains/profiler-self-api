@@ -2,7 +2,7 @@
 
 [![net](https://github.com/JetBrains/profiler-self-api/actions/workflows/build-and-test.yml/badge.svg)](https://github.com/JetBrains/profiler-self-api/actions/workflows/build-and-test.yml)
 
-[![NuGet Badge](https://buildstats.info/nuget/JetBrains.Profiler.SelfApi)](https://www.nuget.org/packages/JetBrains.Profiler.SelfApi)
+[![NuGet Version](https://img.shields.io/nuget/v/JetBrains.Profiler.SelfApi?label=JetBrains.Profiler.SelfApi)](https://www.nuget.org/packages/JetBrains.Profiler.SelfApi)
 
 JetBrains Self-Profiling API lets you initiate and control profiling sessions right from the code of your application.
 The snapshots taken by the API calls can be later opened and investigated in JetBrains profiling tools.
