@@ -28,10 +28,12 @@ Supported frameworks:
     <PackageProjectUrl>https://github.com/JetBrains/profiler-self-api/blob/master/README.md</PackageProjectUrl>
     <PackageIcon>icon.png</PackageIcon>
     <PackageTags>jetbrains profiler profiling memory performance net dotnet netcore dotnetcore netstandard windows uwp macos mac linux musl glibc x86 x64 arm64 x86-64 x86_64 aarch64</PackageTags>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
     <Version>2.5.19-preview.2</Version>
   </PropertyGroup>
   <ItemGroup>
     <None Include="../../icon.png" Pack="true" Visible="false" PackagePath="" />
+    <None Include="../../README.md" Pack="true" Visible="false" PackagePath=""/>
   </ItemGroup>
   <ItemGroup>
     <PackageReference Include="JetBrains.HabitatDetector" Version="1.5.1-preview.2" />
